@@ -36,24 +36,16 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 body.in-game #stage { display: block; }
 body.in-game #home { display: none; }
 
-/* ---------- Parent gate ---------- */
-#gate {
+/* ---------- Home button ---------- */
+#homeBtn {
   display: none; position: fixed; z-index: 200;
   top: calc(env(safe-area-inset-top) + 14px); left: calc(env(safe-area-inset-left) + 14px);
-  width: 54px; height: 54px; padding: 0; border: none; border-radius: 50%;
-  background: rgba(255,255,255,.45); opacity: .65;
+  width: max(64px, 9vmin); height: max(64px, 9vmin); padding: 0; border: none; border-radius: 50%;
+  background: rgba(255,255,255,.75); box-shadow: 0 4px 0 rgba(0,0,0,.12);
+  font-size: max(34px, 5vmin); line-height: 1;
+  transition: transform .12s;
 }
-body.in-game #gate { display: block; }
-#gate svg { width: 100%; height: 100%; display: block; }
-#gate .track { fill: none; stroke: rgba(59,42,74,.15); stroke-width: 4; }
-#gate .ring {
-  fill: none; stroke: #06d6a0; stroke-width: 4; stroke-linecap: round;
-  stroke-dasharray: 126; stroke-dashoffset: 126;
-  transform: rotate(-90deg); transform-origin: 24px 24px;
-  transition: stroke-dashoffset .2s;
-}
-#gate.holding { opacity: 1; }
-#gate.holding .ring { stroke-dashoffset: 0; transition: stroke-dashoffset 1.5s linear; }
-#gate .house { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+body.in-game #homeBtn { display: block; }
+#homeBtn:active { transform: scale(.9); }
 
 #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 150; }

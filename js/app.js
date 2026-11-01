@@ -1,4 +1,4 @@
-/* Legeplads shell: home screen, game switching, parent gate, touch lockdown, offline/update handling. */
+/* Legeplads shell: home screen, game switching, home button, touch lockdown, offline/update handling. */
 import * as kit from './core.js';
 import bobler from '../games/bobler.js';
 import former from '../games/former.js';
@@ -34,7 +34,7 @@ function renderHome() {
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   $('#hint').innerHTML = (standalone ? '' :
     'Til voksne: tryk <b>Del</b> → <b>Føj til hjemmeskærm</b> for at bruge Legeplads som app – også uden net.<br>') +
-    'Hold 🏠 nede for at forlade et spil. Lås iPad\'en med <b>Guidet adgang</b> (tryk tre gange på topknappen).';
+    'Lås iPad\'en til Legeplads med <b>Guidet adgang</b> (tryk tre gange på topknappen).';
 }
 
 function openGame(g) {
@@ -59,18 +59,8 @@ function goHome() {
   if (reloadWhenHome) location.reload();
 }
 
-/* ---------- parent gate: hold the house button for 1.5 s ---------- */
-const gate = $('#gate');
-let gateTimer = null;
-function gateCancel() { clearTimeout(gateTimer); gateTimer = null; gate.classList.remove('holding'); }
-gate.addEventListener('pointerdown', e => {
-  e.preventDefault();
-  e.stopPropagation();
-  gate.setPointerCapture(e.pointerId);
-  gate.classList.add('holding');
-  gateTimer = setTimeout(() => { gateCancel(); goHome(); }, 1500);
-});
-for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) gate.addEventListener(t, gateCancel);
+/* ---------- home button: one tap back to the menu ---------- */
+$('#homeBtn').addEventListener('click', () => { kit.sfx.blip(3); goHome(); });
 
 /* ---------- offline + updates ---------- */
 if ('serviceWorker' in navigator) {

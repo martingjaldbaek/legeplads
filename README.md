@@ -11,7 +11,7 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 1. Open the site in **Safari**, then tap **Share → Add to Home Screen**.
 2. Launch it from the Home Screen icon. It opens full-screen and keeps working **offline**.
 3. To lock the iPad to the app, turn on **Settings → Accessibility → Guided Access**, then triple-click the top button inside the app.
-4. To leave a game, **hold** the 🏠 button in the top-left corner for 1.5 s.
+4. Tap the 🏠 button in the top-left corner to go back to the menu.
 
 **Updates:** push to `main` and GitHub Actions deploys the site. The next time the iPad opens the app with network, it downloads the new version in the background and switches to it. That happens on the home screen, never in the middle of a game. The version number appears at the bottom of the home screen.
 
