@@ -60,8 +60,31 @@ export function tone(freq, { at = 0, dur = 0.3, type = 'sine', vol = 0.2, slide 
   o.stop(t + dur + 0.05);
 }
 
+/** A held note you can bend and release: for finger-follows-sound games. */
+export function sustain({ type = 'triangle', freq = 440, vol = 0.1 } = {}) {
+  const a = audio(), o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  o.connect(g).connect(master);
+  o.start();
+  let stopped = false;
+  return {
+    set(f, glide = 0.03) { if (!stopped) o.frequency.setTargetAtTime(f, a.currentTime, glide); },
+    stop(fade = 0.12) {
+      if (stopped) return;
+      stopped = true;
+      const t2 = a.currentTime;
+      g.gain.cancelScheduledValues(t2);
+      g.gain.setTargetAtTime(0.0001, t2, fade / 3);
+      o.stop(t2 + fade + 0.1);
+    },
+  };
+}
+
 let noiseBuf = null;
-export function noise({ at = 0, dur = 0.08, vol = 0.15, freq = 3000, q = 1 } = {}) {
+export function noise({ at = 0, dur = 0.08, vol = 0.15, freq = 3000, q = 1, sweep = null } = {}) {
   const a = audio();
   if (!noiseBuf) {
     noiseBuf = a.createBuffer(1, a.sampleRate * 0.5, a.sampleRate);
@@ -71,7 +94,9 @@ export function noise({ at = 0, dur = 0.08, vol = 0.15, freq = 3000, q = 1 } = {
   const t = a.currentTime + at;
   const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
   s.buffer = noiseBuf;
-  f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+  f.type = 'bandpass'; f.Q.value = q;
+  f.frequency.setValueAtTime(freq, t);
+  if (sweep) f.frequency.exponentialRampToValueAtTime(sweep, t + dur);
   g.gain.setValueAtTime(vol, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   s.connect(f).connect(g).connect(master);
@@ -109,7 +134,61 @@ export const sfx = {
     tone(scaleHz(15), { at: 0.6, dur: 1.2, vol: 0.12 });
     tone(scaleHz(10), { at: 0.6, dur: 1.2, type: 'triangle', vol: 0.08 });
   },
+  xylo(freq) {
+    tone(freq, { dur: 1.3, vol: 0.28, attack: 0.002 });
+    tone(freq * 4, { dur: 0.15, vol: 0.05, attack: 0.002 });
+    tone(freq * 10, { dur: 0.04, vol: 0.02, attack: 0.001 });
+    noise({ dur: 0.02, vol: 0.08, freq: 4000 });
+  },
+  squeak() { const f = rand(1100, 1700); tone(f, { dur: 0.09, vol: 0.07, slide: f * 1.35 }); },
+  splat() { noise({ dur: 0.2, vol: 0.35, freq: 500, q: 0.7, sweep: 150 }); tone(130, { dur: 0.15, vol: 0.18, slide: 60 }); },
+  bang() { noise({ dur: 0.4, vol: 0.6, freq: 1000, q: 0.4, sweep: 200 }); tone(95, { dur: 0.3, vol: 0.35, slide: 40 }); },
+  whoosh() { noise({ dur: 0.45, vol: 0.2, freq: 400, q: 0.8, sweep: 3000 }); },
+  plop() { tone(520, { dur: 0.16, vol: 0.25, slide: 170 }); tone(260, { at: 0.05, dur: 0.22, type: 'triangle', vol: 0.1 }); },
+  rustle() { noise({ dur: 0.25, vol: 0.1, freq: 2500, q: 0.6, sweep: 1200 }); },
+  fwip() { tone(300, { dur: 0.25, type: 'triangle', vol: 0.1, slide: 900 }); },
+  giggle() { [0, 2, 0, 3, 1].forEach((s, i) => tone(scaleHz(s + 10), { at: i * 0.075, dur: 0.09, vol: 0.1, type: 'triangle' })); },
 };
+
+/* ---------- game helpers ---------- */
+
+/** Per-game timer set: call clear() in the game's stop function. */
+export function timers() {
+  const set = new Set();
+  return {
+    later(fn, ms) { const id = setTimeout(() => { set.delete(id); fn(); }, ms); set.add(id); return id; },
+    every(fn, ms) { const id = setInterval(fn, ms); set.add(id); return id; },
+    clear() { set.forEach(id => { clearTimeout(id); clearInterval(id); }); set.clear(); },
+  };
+}
+
+/** Add a <style> block that disappears with the game's root. */
+export function injectCSS(root, css) {
+  const s = document.createElement('style');
+  s.textContent = css;
+  root.appendChild(s);
+}
+
+/** Pointer-captured dragging of one element by one finger. start(e) may return false to refuse. */
+export function draggable(el, { start, move, end }) {
+  let id = null;
+  el.addEventListener('pointerdown', e => {
+    if (id !== null) return;
+    if (start && start(e) === false) return;
+    e.preventDefault();
+    e.stopPropagation();
+    id = e.pointerId;
+    try { el.setPointerCapture(id); } catch (err) {}
+  });
+  el.addEventListener('pointermove', e => { if (e.pointerId === id && move) move(e); });
+  const fin = e => { if (e.pointerId !== id) return; id = null; if (end) end(e); };
+  el.addEventListener('pointerup', fin);
+  el.addEventListener('pointercancel', fin);
+  return { release() { id = null; } };
+}
+
+/** Restart a CSS animation class on an element. */
+export function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
 /* ---------- speech (on-device Danish voice) ---------- */
 let voice = null;

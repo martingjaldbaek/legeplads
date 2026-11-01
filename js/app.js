@@ -2,9 +2,17 @@
 import * as kit from './core.js';
 import bobler from '../games/bobler.js';
 import former from '../games/former.js';
+import xylofon from '../games/xylofon.js';
+import maling from '../games/maling.js';
+import boh from '../games/boh.js';
+import bondegaard from '../games/bondegaard.js';
+import badetid from '../games/badetid.js';
+import farver from '../games/farver.js';
+import ansigt from '../games/ansigt.js';
+import ballon from '../games/ballon.js';
 
 // To add a game: create games/<name>.js (see README) and add it here.
-const GAMES = [bobler, former];
+const GAMES = [bobler, former, xylofon, maling, boh, bondegaard, badetid, farver, ansigt, ballon];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;

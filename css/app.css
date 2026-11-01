@@ -25,18 +25,21 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5vmin;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
-#home h1 { font-size: min(10vw, 9vh); letter-spacing: .03em; text-shadow: 0 .06em 0 rgba(0,0,0,.08); }
-#tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 4vmin; max-width: 94vw; }
+#home h1 { font-size: min(8vw, 8vh); letter-spacing: .03em; text-shadow: 0 .06em 0 rgba(0,0,0,.08); }
+/* landscape: 5 per row; portrait: 3 per row */
+#tiles { --tile: min(15.5vw, 28vh, 230px); display: grid; grid-template-columns: repeat(5, var(--tile)); gap: 2.6vmin; }
+@media (orientation: portrait) { #tiles { --tile: min(26vw, 17vh, 230px); grid-template-columns: repeat(3, var(--tile)); } }
 .tile {
-  width: min(34vmin, 260px); aspect-ratio: 1; border: none; border-radius: 22%;
+  width: var(--tile); aspect-ratio: 1; border: none; border-radius: 22%; padding: 0;
+  container-type: inline-size;
   background: var(--c); color: #fff;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vmin;
-  box-shadow: 0 1.2vmin 0 rgba(0,0,0,.16), 0 2.5vmin 5vmin rgba(0,0,0,.12);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4cqw;
+  box-shadow: 0 1vmin 0 rgba(0,0,0,.16), 0 2vmin 4vmin rgba(0,0,0,.12);
   transition: transform .12s;
 }
 .tile:active { transform: scale(.93) translateY(.6vmin); }
-.tile .icon { font-size: 15vmin; line-height: 1; }
-.tile .name { font-size: 4.2vmin; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+.tile .icon { font-size: 44cqw; line-height: 1; }
+.tile .name { font-size: 12.5cqw; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,.18); white-space: nowrap; }
 #info { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 2vmin); left: 0; right: 0; text-align: center; }
 #info p { font-size: max(11px, 1.6vmin); opacity: .55; margin: .4em auto; max-width: 80ch; padding: 0 2em; }
 
