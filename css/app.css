@@ -1,0 +1,59 @@
+:root { --ink: #3b2a4a; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body {
+  position: fixed; inset: 0; overflow: hidden;
+  overscroll-behavior: none; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 50% 20%, #fff8e8, #ffd9e8);
+}
+button { font: inherit; color: inherit; touch-action: manipulation; }
+
+/* ---------- Home ---------- */
+#home {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5vmin;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#home h1 { font-size: min(10vw, 9vh); letter-spacing: .03em; text-shadow: 0 .06em 0 rgba(0,0,0,.08); }
+#tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 4vmin; max-width: 94vw; }
+.tile {
+  width: min(34vmin, 260px); aspect-ratio: 1; border: none; border-radius: 22%;
+  background: var(--c); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5vmin;
+  box-shadow: 0 1.2vmin 0 rgba(0,0,0,.16), 0 2.5vmin 5vmin rgba(0,0,0,.12);
+  transition: transform .12s;
+}
+.tile:active { transform: scale(.93) translateY(.6vmin); }
+.tile .icon { font-size: 15vmin; line-height: 1; }
+.tile .name { font-size: 4.2vmin; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,.18); }
+#info { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 2vmin); left: 0; right: 0; text-align: center; }
+#info p { font-size: max(11px, 1.6vmin); opacity: .55; margin: .4em auto; max-width: 80ch; padding: 0 2em; }
+
+/* ---------- Game stage ---------- */
+#stage { position: absolute; inset: 0; display: none; overflow: hidden; }
+body.in-game #stage { display: block; }
+body.in-game #home { display: none; }
+
+/* ---------- Parent gate ---------- */
+#gate {
+  display: none; position: fixed; z-index: 200;
+  top: calc(env(safe-area-inset-top) + 14px); left: calc(env(safe-area-inset-left) + 14px);
+  width: 54px; height: 54px; padding: 0; border: none; border-radius: 50%;
+  background: rgba(255,255,255,.45); opacity: .65;
+}
+body.in-game #gate { display: block; }
+#gate svg { width: 100%; height: 100%; display: block; }
+#gate .track { fill: none; stroke: rgba(59,42,74,.15); stroke-width: 4; }
+#gate .ring {
+  fill: none; stroke: #06d6a0; stroke-width: 4; stroke-linecap: round;
+  stroke-dasharray: 126; stroke-dashoffset: 126;
+  transform: rotate(-90deg); transform-origin: 24px 24px;
+  transition: stroke-dashoffset .2s;
+}
+#gate.holding { opacity: 1; }
+#gate.holding .ring { stroke-dashoffset: 0; transition: stroke-dashoffset 1.5s linear; }
+#gate .house { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 150; }

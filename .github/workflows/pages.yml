@@ -1,0 +1,47 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build site and stamp the service worker
+        run: |
+          mkdir _site
+          rsync -a --exclude '.git*' --exclude '.github' --exclude '_site' --exclude 'tools' --exclude 'README.md' ./ _site/
+          python3 - <<'EOF'
+          import json, os
+          os.chdir('_site')
+          assets = sorted(os.path.join(d, f)[2:] for d, _, fs in os.walk('.') for f in fs
+                          if f != 'sw.js' and not f.startswith('.'))
+          sw = open('sw.js').read()
+          sw = sw.replace("'__VERSION__'", repr(os.environ['GITHUB_SHA'][:12]))
+          sw = sw.replace('[/*__ASSETS__*/]', json.dumps(assets))
+          open('sw.js', 'w').write(sw)
+          print(len(assets), 'assets precached')
+          EOF
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
