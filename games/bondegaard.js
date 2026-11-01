@@ -135,8 +135,8 @@ export default {
       });
     }
     layout();
-    addEventListener('resize', layout);
+    const offResize = kit.onResize(root, layout);
 
-    return () => { t.clear(); removeEventListener('resize', layout); if (clip) clip.pause(); };
+    return () => { t.clear(); offResize(); if (clip) clip.pause(); };
   },
 };

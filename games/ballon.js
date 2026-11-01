@@ -25,7 +25,7 @@ export default {
       cx.setTransform(d, 0, 0, d, 0, 0);
     }
     resize();
-    addEventListener('resize', resize);
+    const offResize = kit.onResize(root, resize);
 
     const balloons = [], shreds = [], clouds = [];
     const holding = new Map();   // pointerId -> balloon
@@ -176,7 +176,7 @@ export default {
 
     return () => {
       cancelAnimationFrame(raf);
-      removeEventListener('resize', resize);
+      offResize();
       balloons.forEach(b => b.voice && b.voice.stop());
     };
   },

@@ -169,12 +169,12 @@ export default {
       p.el.addEventListener('pointercancel', end);
     }
 
-    addEventListener('resize', layout);
+    const offResize = kit.onResize(root, layout);
     newRound();
 
     return () => {
       timers.forEach(clearTimeout);
-      removeEventListener('resize', layout);
+      offResize();
     };
   },
 };

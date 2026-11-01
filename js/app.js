@@ -10,9 +10,13 @@ import badetid from '../games/badetid.js';
 import farver from '../games/farver.js';
 import ansigt from '../games/ansigt.js';
 import ballon from '../games/ballon.js';
+import musik from '../games/musik.js';
+import instrumenter from '../games/instrumenter.js';
+import tryllemaling from '../games/tryllemaling.js';
 
 // To add a game: create games/<name>.js (see README) and add it here.
-const GAMES = [bobler, former, xylofon, maling, boh, bondegaard, badetid, farver, ansigt, ballon];
+const GAMES = [bobler, former, xylofon, maling, tryllemaling, boh, bondegaard, badetid,
+  farver, ansigt, ballon, instrumenter, musik];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;
@@ -69,6 +73,21 @@ function goHome() {
   document.body.classList.remove('in-game');
   if (reloadWhenHome) location.reload();
 }
+
+/* ---------- voice check for grown-ups ---------- */
+function showVoice() {
+  const name = kit.voiceName(), n = kit.voiceCount();
+  $('#voiceInfo').textContent = !window.speechSynthesis ? 'Tale understøttes ikke her'
+    : name ? `Stemme: ${name}`
+    : n ? `Ingen dansk stemme fundet (${n} andre stemmer)` : 'Stemmer indlæses…';
+}
+$('#voiceTest').addEventListener('click', () => {
+  kit.unlock();
+  kit.say('Hej! Koen siger muh!', { pitch: 1.1 });
+  showVoice();
+});
+if (window.speechSynthesis) speechSynthesis.addEventListener?.('voiceschanged', showVoice);
+setTimeout(showVoice, 500);
 
 /* ---------- home button: one tap back to the menu ---------- */
 $('#homeBtn').addEventListener('click', () => { kit.sfx.blip(3); goHome(); });

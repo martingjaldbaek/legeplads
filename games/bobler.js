@@ -30,7 +30,7 @@ export default {
       cx.setTransform(d, 0, 0, d, 0, 0);
     }
     resize();
-    addEventListener('resize', resize);
+    const offResize = kit.onResize(root, resize);
 
     const bubbles = [], drops = [], rings = [], floaters = [];
     let spawnIn = 0, last = performance.now(), raf = 0;
@@ -153,7 +153,7 @@ export default {
 
     return () => {
       cancelAnimationFrame(raf);
-      removeEventListener('resize', resize);
+      offResize();
     };
   },
 };

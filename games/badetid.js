@@ -145,7 +145,7 @@ export default {
     layout();
     nextSubject(true);
     const onResize = () => { layout(); sizeCanvases(); if (state === 'washing') dirty(); };
-    addEventListener('resize', onResize);
+    const offResize = kit.onResize(root, onResize);
 
     const last = new Map();
     let lastSqueak = 0, lastCheck = 0;
@@ -224,6 +224,6 @@ export default {
     }
     raf = requestAnimationFrame(frame);
 
-    return () => { t.clear(); cancelAnimationFrame(raf); removeEventListener('resize', onResize); };
+    return () => { t.clear(); cancelAnimationFrame(raf); offResize(); };
   },
 };

@@ -190,6 +190,31 @@ export function draggable(el, { start, move, end }) {
 /** Restart a CSS animation class on an element. */
 export function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 
+/** Call fn whenever el changes size (rotation, window resize). Uses ResizeObserver, which reports
+ *  AFTER layout – window 'resize' on iOS can fire before the new size is known, which left canvases
+ *  stretched. A late re-check after orientation changes catches any stragglers. Returns an unsubscribe. */
+export function onResize(el, fn) {
+  let w = el.clientWidth, h = el.clientHeight, raf = 0, late = 0;
+  const check = () => {
+    if (el.clientWidth === w && el.clientHeight === h) return;
+    w = el.clientWidth; h = el.clientHeight;
+    fn();
+  };
+  const ro = new ResizeObserver(() => { cancelAnimationFrame(raf); raf = requestAnimationFrame(check); });
+  ro.observe(el);
+  const lateCheck = () => { clearTimeout(late); late = setTimeout(check, 400); };
+  addEventListener('orientationchange', lateCheck);
+  addEventListener('resize', lateCheck);
+  return () => {
+    ro.disconnect(); cancelAnimationFrame(raf); clearTimeout(late);
+    removeEventListener('orientationchange', lateCheck);
+    removeEventListener('resize', lateCheck);
+  };
+}
+
+/** The master output node, for games that build their own audio graph. */
+export function output() { audio(); return master; }
+
 /* ---------- speech (on-device Danish voice) ---------- */
 let voice = null;
 function pickVoice() {
@@ -200,16 +225,26 @@ function pickVoice() {
 }
 if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
 export const voiceName = () => (voice ? voice.name : null);
+export const voiceCount = () => (window.speechSynthesis ? speechSynthesis.getVoices().length : 0);
 
+// Safari drops an utterance queued right after cancel(), so only cancel when something is actually
+// playing, and then give the synthesizer a moment before speaking again.
+let speakTimer = 0;
 export function say(text, { pitch = 1.15, rate = 0.95 } = {}) {
   if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
+  if (!voice) pickVoice();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'da-DK';
   if (voice) u.voice = voice;
   u.pitch = pitch;
   u.rate = rate;
-  speechSynthesis.speak(u);
+  u.volume = 1;
+  clearTimeout(speakTimer);
+  const go = () => { try { speechSynthesis.resume(); } catch (e) {} speechSynthesis.speak(u); };
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+    speakTimer = setTimeout(go, 90);
+  } else go();
 }
 
 /* ---------- confetti ---------- */
@@ -225,7 +260,7 @@ function ensureCanvas() {
     cv.width = innerWidth * d; cv.height = innerHeight * d;
     cx.setTransform(d, 0, 0, d, 0, 0);
   };
-  addEventListener('resize', resize);
+  onResize(document.body, resize);
   resize();
 }
 export function burst(x, y, n = 60, power = 1) {

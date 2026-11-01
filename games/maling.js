@@ -50,7 +50,7 @@ export default {
       pc.lineCap = pc.lineJoin = 'round';
     }
     resize();
-    addEventListener('resize', resize);
+    const offResize = kit.onResize(root, resize);
 
     const strokes = new Map();   // pointerId -> { x, y, hue, voice }
     const sparkles = [];
@@ -125,7 +125,7 @@ export default {
 
     return () => {
       cancelAnimationFrame(raf);
-      removeEventListener('resize', resize);
+      offResize();
       strokes.forEach(s => s.voice && s.voice.stop());
     };
   },

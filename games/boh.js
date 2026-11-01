@@ -100,7 +100,7 @@ export default {
       });
     }
     layout();
-    addEventListener('resize', layout);
+    const offResize = kit.onResize(root, layout);
 
     function hide(s, avoid) {
       const used = new Set(spots.filter(x => x.animal).map(x => x.animal[0]));
@@ -158,6 +158,6 @@ export default {
       t.later(() => s.el.classList.remove('peek'), 900);
     }, 3800);
 
-    return () => { t.clear(); removeEventListener('resize', layout); };
+    return () => { t.clear(); offResize(); };
   },
 };

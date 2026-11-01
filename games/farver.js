@@ -162,8 +162,8 @@ export default {
       });
     }
 
-    addEventListener('resize', layout);
+    const offResize = kit.onResize(root, layout);
     newRound();
-    return () => { t.clear(); removeEventListener('resize', layout); };
+    return () => { t.clear(); offResize(); };
   },
 };

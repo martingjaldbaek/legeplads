@@ -184,7 +184,7 @@ export default {
     });
 
     layout();
-    addEventListener('resize', layout);
-    return () => { t.clear(); removeEventListener('resize', layout); };
+    const offResize = kit.onResize(root, layout);
+    return () => { t.clear(); offResize(); };
   },
 };
