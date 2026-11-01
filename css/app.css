@@ -1,13 +1,22 @@
 :root { --ink: #3b2a4a; }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body {
+/* iOS paints anything outside the layout (e.g. behind the home indicator) with the ROOT background
+   colour. Keep it in step with what's on screen (app.js sets --edge per game) so no white bar shows. */
+html {
+  height: 100%; overflow: hidden;
+  background-color: var(--edge, #ffdbe7);
+  transition: background-color .3s;
+}
+body {
   position: fixed; inset: 0; overflow: hidden;
   overscroll-behavior: none; touch-action: none;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif;
   color: var(--ink);
   background: radial-gradient(circle at 50% 20%, #fff8e8, #ffd9e8);
+  min-height: 100lvh;   /* if the fixed box comes up short in standalone mode, stretch to the full screen */
 }
+html, body { overscroll-behavior: none; touch-action: none; }
 button { font: inherit; color: inherit; touch-action: manipulation; }
 
 /* ---------- Home ---------- */

@@ -44,6 +44,8 @@ function openGame(g) {
   const stage = $('#stage');
   stage.innerHTML = '';
   stage.removeAttribute('style');
+  // colour iOS uses for any area outside the layout (see css/app.css)
+  document.documentElement.style.setProperty('--edge', g.edge || '#ffffff');
   document.body.classList.add('in-game');
   stopGame = g.start(stage, kit) || null;
 }
@@ -55,6 +57,7 @@ function goHome() {
   if (window.speechSynthesis) speechSynthesis.cancel();
   kit.clearConfetti();
   $('#stage').innerHTML = '';
+  document.documentElement.style.removeProperty('--edge');
   document.body.classList.remove('in-game');
   if (reloadWhenHome) location.reload();
 }

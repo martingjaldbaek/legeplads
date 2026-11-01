@@ -43,6 +43,7 @@ export default {
   title: 'Former',
   icon: '🔺',
   color: '#ff8a00',
+  edge: '#ffe1b8',          // bottom colour of the background (fills any gap iOS leaves)
 
   start(root, kit) {
     root.style.background = 'linear-gradient(#fff6d8, #ffe1b8)';

@@ -13,6 +13,7 @@ export default {
   title: 'Bobler',
   icon: '🫧',
   color: '#3a86ff',
+  edge: '#4fb0f0',          // bottom colour of the background (fills any gap iOS leaves)
 
   start(root, kit) {
     root.style.background = 'linear-gradient(#c9ecff, #84cdfa 55%, #4fb0f0)';

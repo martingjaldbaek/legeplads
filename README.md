@@ -30,6 +30,7 @@ Create `games/<name>.js`:
 ```js
 export default {
   id: 'name', title: 'Navn', icon: '🐘', color: '#8338ec',
+  edge: '#ccbbff',   // bottom colour of the game's background; iOS paints it behind the home indicator
   start(root, kit) {
     // build the game inside `root` (a full-screen div)
     // kit: sfx.*, tone(), say(), burst(), bigBurst(), rand/pick/shuffle, COLORS
