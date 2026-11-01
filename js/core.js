@@ -217,12 +217,20 @@ export function output() { audio(); return master; }
 
 /* ---------- speech (on-device Danish voice) ---------- */
 let voice = null;
+// Higher-quality voices are often only told apart by their voiceURI (…voice.enhanced.da-DK.Sara),
+// not their name, so look at both.
+const quality = v => { const s = (v.name + ' ' + v.voiceURI).toLowerCase();
+  return /premium/.test(s) ? 3 : /enhanced|forbedret|udvidet|neural|natural/.test(s) ? 2 : /compact|kompakt/.test(s) ? 0 : 1; };
+export const danishVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices().filter(v => /^da/i.test(v.lang)) : []);
 function pickVoice() {
   if (!window.speechSynthesis) return;
-  const score = v => (/premium/i.test(v.name) ? 3 : /enhanced|forbedret|udvidet/i.test(v.name) ? 2 : 0) + (/sara/i.test(v.name) ? 1 : 0);
-  const da = speechSynthesis.getVoices().filter(v => /^da/i.test(v.lang)).sort((a, b) => score(b) - score(a));
-  voice = da[0] || null;
+  let chosen = null;
+  try { chosen = localStorage.getItem('legeplads-voice'); } catch (e) {}
+  const da = danishVoices().sort((a, b) => quality(b) - quality(a) + (/sara/i.test(b.name) - /sara/i.test(a.name)) * 0.1);
+  voice = da.find(v => v.voiceURI === chosen) || da[0] || null;
 }
+export function chooseVoice(uri) { try { localStorage.setItem('legeplads-voice', uri); } catch (e) {} pickVoice(); }
+export const voiceQuality = () => (!voice ? '' : [' (kompakt)', '', ' (forbedret)', ' (premium)'][quality(voice)]);
 if (window.speechSynthesis) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
 export const voiceName = () => (voice ? voice.name : null);
 export const voiceCount = () => (window.speechSynthesis ? speechSynthesis.getVoices().length : 0);
@@ -249,6 +257,8 @@ export function say(text, { pitch = 1.15, rate = 0.95 } = {}) {
 
 /* ---------- confetti ---------- */
 let cv = null, cx = null, parts = [], running = false;
+// the confetti layer may be taller than the window (see --vp-gap), so measure the canvas itself
+const CW = () => (cv ? cv.clientWidth : window.innerWidth), CH = () => (cv ? cv.clientHeight : window.innerHeight);
 function ensureCanvas() {
   if (cv) return;
   cv = document.createElement('canvas');
@@ -257,7 +267,7 @@ function ensureCanvas() {
   cx = cv.getContext('2d');
   const resize = () => {
     const d = Math.min(2, window.devicePixelRatio || 1);
-    cv.width = innerWidth * d; cv.height = innerHeight * d;
+    cv.width = cv.clientWidth * d; cv.height = cv.clientHeight * d;
     cx.setTransform(d, 0, 0, d, 0, 0);
   };
   onResize(document.body, resize);
@@ -265,7 +275,7 @@ function ensureCanvas() {
 }
 export function burst(x, y, n = 60, power = 1) {
   ensureCanvas();
-  const s0 = Math.min(innerWidth, innerHeight) / 700;   // scale with screen size
+  const s0 = Math.min(CW(), CH()) / 700;   // scale with screen size
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, s = (3 + Math.random() * 9) * power * s0;
     parts.push({
@@ -278,7 +288,7 @@ export function burst(x, y, n = 60, power = 1) {
   if (!running) { running = true; requestAnimationFrame(tick); }
 }
 export function bigBurst() {
-  for (let i = 0; i < 6; i++) setTimeout(() => burst(innerWidth * rand(0.1, 0.9), innerHeight * rand(0.15, 0.55), 90, 1.3), i * 200);
+  for (let i = 0; i < 6; i++) setTimeout(() => burst(CW() * rand(0.1, 0.9), CH() * rand(0.15, 0.55), 90, 1.3), i * 200);
 }
 export function clearConfetti() { parts = []; }
 function star(s) {
@@ -291,9 +301,9 @@ function star(s) {
   cx.fill();
 }
 function tick() {
-  cx.clearRect(0, 0, innerWidth, innerHeight);
-  parts = parts.filter(p => p.life > 0 && p.y < innerHeight + 50);
-  const g = 0.32 * Math.min(innerWidth, innerHeight) / 700;
+  cx.clearRect(0, 0, CW(), CH());
+  parts = parts.filter(p => p.life > 0 && p.y < CH() + 50);
+  const g = 0.32 * Math.min(CW(), CH()) / 700;
   for (const p of parts) {
     p.vy += g; p.vx *= 0.985; p.vy *= 0.985;
     p.x += p.vx; p.y += p.vy; p.r += p.vr; p.life -= 0.007;
@@ -306,5 +316,5 @@ function tick() {
     cx.restore();
   }
   if (parts.length) requestAnimationFrame(tick);
-  else { running = false; cx.clearRect(0, 0, innerWidth, innerHeight); }
+  else { running = false; cx.clearRect(0, 0, CW(), CH()); }
 }

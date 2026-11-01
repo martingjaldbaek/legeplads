@@ -13,9 +13,9 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 - **Badetid** 🛁: a muddy animal or vehicle in the tub. Rub it clean, with foam, bubbles and squeaks, and it says thank you. Then the next one gets muddy.
 - **Farver** 🪣: drag balls into the bucket of the same colour, which is named as each ball drops in. A ball dropped in the wrong bucket bounces back; anywhere else is fine.
 - **Ansigt** 😜: drag eyes, noses, hats, strawberries… onto a face. Every part is named as it lands, and you drag a part off the face to remove it. Tapping the face makes it giggle, and 🔄 gives a new face.
-- **Tryllemaling** 🪄: a "paint with water" book. The main characters start as outlines, and brushing a finger brings out the colours plus hidden surprises (a butterfly, a crab…), each one named. A finished page sparkles, and ➡️ turns to the next one (farm, sea, space, jungle).
-- **Instrumenter** 🥁: drum, bell, shaker and trumpet (hold to blow), and a rainbow harp to strum.
-- **Musikmaskine** 🎛️: pick a song (Solskin, Dino-dans, Godnat, Rumrejse), then light up tiles. A playhead loops across them: the top rows are melody notes in the song's key, the bottom rows are drums, and a soft backing track plays underneath. Drag across tiles to paint them. 🧽 clears the grid and 🎵 goes back to the song list.
+- **Tryllemaling** 🪄: a "paint with water" book with no voice, just chimes and sparkles. The main characters start as outlines, and brushing a finger brings out the colours plus hidden surprises with no outline. Page 1 (the farm) is hand-drawn SVG in `games/art/gaarden.js`; the sea, space and jungle pages are traced from emoji. ➡️ turns the page.
+- **Instrumenter** 🥁: SVG characters (in `games/art/instrumenter-art.js`): a drum whose sticks strike, a swinging bell, maracas and a trumpet (hold to blow), plus a rainbow harp to strum.
+- **Musikmaskine** 🎛️: pick one of eight songs (Solskin, Dino-dans, Godnat, Rumrejse, Regnvejr, Havet, Rock, Cirkus), then light up tiles. A playhead loops across them: the top rows are melody notes in the song's key, the bottom rows are drums, and a soft backing track plays underneath. Drag across tiles to paint them. 🧽 clears the grid and 🎵 goes back to the song list.
 - **Ballon** 🎈: hold a finger down to blow up a balloon, with a rising sound. Let go and it floats away; hold too long and it pops with confetti. Tap a flying balloon to pop it.
 
 ## On the iPad
@@ -25,6 +25,10 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 4. Tap the 🏠 button in the top-left corner to go back to the menu.
 
 **Updates:** push to `main` and GitHub Actions deploys the site. The next time the iPad opens the app with network, it downloads the new version in the background and switches to it. That happens on the home screen, never in the middle of a game. The version number appears at the bottom of the home screen.
+
+## Grown-up info on the home screen
+- **🔊 Test stemmen** speaks a test line and shows which voice is in use. If Safari exposes more than one Danish voice, a menu appears so you can choose.
+- **The last line** shows screen size, window size and how many pixels were added at the bottom to work around the iPadOS 26 short-layout bug.
 
 ## How offline works
 `sw.js` is a service worker. At deploy time the workflow stamps it with the commit hash and a list of every file. When the hash changes, the browser installs the new worker, which precaches all files fresh and deletes the old cache. Locally the hash placeholder is left in, so the worker runs network-first and edits show up immediately.

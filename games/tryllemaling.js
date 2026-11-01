@@ -1,13 +1,16 @@
+import * as gaarden from './art/gaarden.js';
+
 /* Tryllemaling: like a "paint with water" book. The page starts as a colouring-book outline of the main
  * characters; wherever a finger brushes, the colours magically appear – and hidden surprises (a butterfly,
  * a crab…) that had no outline at all pop into view. When most of the page is painted it finishes itself
- * with a sparkle, and ➡️ turns to the next page.
+ * with a sparkle, and ➡️ turns to the next page. No voice – just sparkles and chimes.
+ *
+ * Page 1 is hand-drawn SVG line art (games/art/gaarden.js); the others are built from emoji with an
+ * outline traced around their silhouettes.
  */
 // emoji, spoken name, x, y (fractions of the page), size (fraction of the short side), hidden
 const SCENES = [
-  { sky: ['#9fdcff', '#e6f7ff'], ground: ['#8ed46b', '#5fb347'], horizon: 0.6, clouds: true, objects: [
-    ['🏠', 'Huset', 0.24, 0.47, 0.32], ['🌳', 'Træet', 0.78, 0.44, 0.34], ['🐶', 'Hunden', 0.52, 0.76, 0.26], ['☀️', 'Solen', 0.88, 0.13, 0.17],
-    ['🦋', 'en sommerfugl', 0.45, 0.25, 0.11, 1], ['🌷', 'en blomst', 0.1, 0.84, 0.12, 1], ['🐦', 'en fugl', 0.62, 0.15, 0.1, 1], ['🐞', 'en mariehøne', 0.88, 0.86, 0.09, 1]] },
+  { art: gaarden },
   { sky: ['#a5e4ff', '#e9fbff'], ground: ['#4fb6ec', '#1f78c8'], horizon: 0.42, clouds: true, objects: [
     ['⛵', 'Båden', 0.3, 0.34, 0.22], ['🐳', 'Hvalen', 0.6, 0.66, 0.34], ['☀️', 'Solen', 0.1, 0.13, 0.15],
     ['🐠', 'en fisk', 0.18, 0.64, 0.12, 1], ['🐙', 'en blæksprutte', 0.86, 0.82, 0.14, 1], ['🦀', 'en krabbe', 0.36, 0.9, 0.1, 1], ['🐢', 'en skildpadde', 0.9, 0.52, 0.11, 1]] },
@@ -60,12 +63,22 @@ export default {
     const lc = lineCv.getContext('2d'), pc = paintCv.getContext('2d'), fc = fullCv.getContext('2d'),
           xc = fxCv.getContext('2d'), cc = colorCv.getContext('2d');
 
-    let W = 0, H = 0, S = 0, dpr = 1, sceneIdx = Math.floor(Math.random() * SCENES.length), scene = SCENES[sceneIdx];
+    let W = 0, H = 0, S = 0, dpr = 1, sceneIdx = 0, scene = SCENES[sceneIdx];
     let grid, found, strokes = [], done = false;
     const sparkles = [];
 
     const emojiFont = px => `${px}px system-ui, "Apple Color Emoji", sans-serif`;
-    const obj = o => ({ e: o[0], name: o[1], x: o[2] * W, y: o[3] * H, size: o[4] * S * 1.15, hidden: !!o[5] });
+    // every scene's objects in screen coordinates: { e?, x, y, size?, hit, hidden }
+    function objects() {
+      if (scene.art) {
+        const k = Math.max(W / scene.art.W, H / scene.art.H), ox = (W - scene.art.W * k) / 2, oy = (H - scene.art.H * k) / 2;
+        return scene.art.hidden.map(h => ({ x: ox + h.x * k, y: oy + h.y * k, hit: h.r * k, hidden: true }));
+      }
+      return scene.objects.map(o => ({ e: o[0], x: o[2] * W, y: o[3] * H, size: o[4] * S * 1.15, hit: o[4] * S * 0.37, hidden: !!o[5] }));
+    }
+    const svgImage = str => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null);
+      im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(str); });
+    let renderToken = 0;
 
     function drawBackground(ctx) {
       const hy = scene.horizon * H;
@@ -122,7 +135,20 @@ export default {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       for (const c of [lineCv, paintCv, fullCv, fxCv, colorCv]) { c.width = W * dpr; c.height = H * dpr; }
       for (const ctx of [lc, pc, fc, xc, cc]) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const objs = scene.objects.map(obj);
+      const token = ++renderToken;
+      if (scene.art) {
+        // vector page: rasterise both versions at the exact device-pixel size for crisp lines
+        lc.fillStyle = '#fffaf0'; lc.fillRect(0, 0, W, H);
+        Promise.all([svgImage(scene.art.svg(true, W * dpr, H * dpr)), svgImage(scene.art.svg(false, W * dpr, H * dpr))]).then(([li, co]) => {
+          if (token !== renderToken || !li || !co) return;
+          lc.drawImage(li, 0, 0, W, H);
+          cc.drawImage(co, 0, 0, W, H);
+          fc.drawImage(colorCv, 0, 0, W, H);
+          for (const [x, y, r] of strokes) dab(x * W, y * H, r * S, false);
+        });
+        return;
+      }
+      const objs = objects();
       // full-colour picture (offscreen)
       drawBackground(cc);
       cc.textAlign = 'center'; cc.textBaseline = 'middle';
@@ -176,16 +202,11 @@ export default {
         if (Math.hypot(cx - x, cy - y) < r + W / GRID_X * 0.4) grid[gy * GRID_X + gx] = 1;
       }
       // did we just uncover something?
-      scene.objects.map(obj).forEach((o, i) => {
-        if (found.has(i) || Math.hypot(o.x - x, o.y - y) > o.size * 0.32) return;
+      objects().forEach((o, i) => {
+        if (!o.hidden || found.has(i) || Math.hypot(o.x - x, o.y - y) > o.hit) return;
         found.add(i);
-        if (o.hidden) {
-          kit.sfx.chime();
-          kit.burst(o.x, o.y, 30, 0.7);
-          kit.say(`Se! ${o.name[0].toUpperCase()}${o.name.slice(1)}!`, { pitch: 1.3 });
-        } else {
-          kit.say(o.name + '!', { pitch: 1.2 });
-        }
+        kit.sfx.chime();
+        kit.burst(o.x, o.y, 30, 0.7);
       });
       if (Math.random() < 0.5) sparkles.push({ x: x + kit.rand(-1, 1) * r, y: y + kit.rand(-1, 1) * r, life: 1, hue: kit.rand(0, 360), s: S * kit.rand(0.01, 0.02) });
     }
@@ -195,7 +216,6 @@ export default {
       fullCv.classList.add('show');
       kit.sfx.fanfare();
       kit.bigBurst();
-      t.later(() => kit.say('Flot! Sikke et flot billede!', { pitch: 1.3 }), 600);
       t.later(() => next.classList.add('pulse'), 1500);
     }
 

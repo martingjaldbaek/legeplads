@@ -7,14 +7,16 @@ html {
   background-color: var(--edge, #ffdbe7);
   transition: background-color .3s;
 }
+/* iOS 26 Home Screen apps can lay the page out shorter than the screen, leaving a strip at the bottom
+   that no CSS unit reaches (vh/dvh/lvh/100% all report the short height). app.js measures the gap and
+   stretches the body by --vp-gap. */
 body {
-  position: fixed; inset: 0; overflow: hidden;
+  position: fixed; top: 0; left: 0; right: 0; height: calc(100% + var(--vp-gap, 0px)); overflow: hidden;
   overscroll-behavior: none; touch-action: none;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif;
   color: var(--ink);
   background: radial-gradient(circle at 50% 20%, #fff8e8, #ffd9e8);
-  min-height: 100lvh;   /* if the fixed box comes up short in standalone mode, stretch to the full screen */
 }
 html, body { overscroll-behavior: none; touch-action: none; }
 button { font: inherit; color: inherit; touch-action: manipulation; }
@@ -42,6 +44,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
 .tile .name { font-size: 11.5cqw; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,.18); white-space: nowrap; }
 #info { text-align: center; }
 #info p { font-size: max(11px, 1.6vmin); opacity: .55; margin: .4em auto; max-width: 80ch; padding: 0 2em; }
+#voiceSelect { font-size: inherit; margin-left: .5em; }
 #voiceTest { font-size: inherit; padding: .3em .9em; border-radius: 99px; border: 1px solid rgba(59,42,74,.3); background: rgba(255,255,255,.6); }
 
 /* ---------- Game stage ---------- */
@@ -61,4 +64,4 @@ body.in-game #home { display: none; }
 body.in-game #homeBtn { display: block; }
 #homeBtn:active { transform: scale(.9); }
 
-#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 150; }
+#confetti { position: fixed; top: 0; left: 0; right: 0; height: calc(100% + var(--vp-gap, 0px)); pointer-events: none; z-index: 150; }

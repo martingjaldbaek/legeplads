@@ -74,12 +74,35 @@ function goHome() {
   if (reloadWhenHome) location.reload();
 }
 
+/* ---------- iOS 26 standalone bottom gap ---------- */
+// See css/app.css. Only in Home Screen mode, only when we fill the whole screen width (not split view),
+// and capped, so nothing changes in Safari tabs or on iPadOS versions without the bug.
+function fixViewportGap() {
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  const land = innerWidth > innerHeight;
+  const sw = land ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+  const sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
+  let gap = 0;
+  if (standalone && Math.abs(innerWidth - sw) <= 2) gap = Math.max(0, Math.min(120, sh - innerHeight));
+  document.documentElement.style.setProperty('--vp-gap', gap + 'px');
+  $('#dims').textContent = `Skærm ${sw}×${sh} · vindue ${innerWidth}×${innerHeight} · udfyldt ${gap}px`;
+}
+fixViewportGap();
+addEventListener('resize', () => { fixViewportGap(); setTimeout(fixViewportGap, 400); });
+addEventListener('orientationchange', () => setTimeout(fixViewportGap, 400));
+
 /* ---------- voice check for grown-ups ---------- */
 function showVoice() {
-  const name = kit.voiceName(), n = kit.voiceCount();
+  const name = kit.voiceName(), all = kit.danishVoices();
   $('#voiceInfo').textContent = !window.speechSynthesis ? 'Tale understøttes ikke her'
-    : name ? `Stemme: ${name}`
-    : n ? `Ingen dansk stemme fundet (${n} andre stemmer)` : 'Stemmer indlæses…';
+    : name ? `Stemme: ${name}${kit.voiceQuality()}`
+    : kit.voiceCount() ? `Ingen dansk stemme fundet (${kit.voiceCount()} andre stemmer)` : 'Stemmer indlæses…';
+  // more than one Danish voice exposed: let the grown-up choose
+  let sel = $('#voiceSelect');
+  if (all.length > 1) {
+    if (!sel) { sel = document.createElement('select'); sel.id = 'voiceSelect'; $('#voiceInfo').after(sel); sel.addEventListener('change', () => { kit.chooseVoice(sel.value); kit.say('Hej! Koen siger muh!'); showVoice(); }); }
+    sel.innerHTML = all.map(v => `<option value="${v.voiceURI}" ${v.name === name ? 'selected' : ''}>${v.name} – ${v.voiceURI.split('.').slice(-3).join('.')}</option>`).join('');
+  }
 }
 $('#voiceTest').addEventListener('click', () => {
   kit.unlock();

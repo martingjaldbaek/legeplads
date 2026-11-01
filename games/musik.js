@@ -22,13 +22,30 @@ const SONGS = [
     chords: [[0, 3, 7], [-2, 2, 5], [-4, 0, 3], [-2, 2, 5]],
     bg: 'linear-gradient(#6a3fbf, #2b1a5a)', edge: '#2b1a5a', tile: '#5a40a0', dark: true,
     start: { kick: [0, 2, 4, 6], hat: [1, 3, 5, 7], mel: [[0, 0], [1, 2], [2, 4], [3, 3]] } },
+  { name: 'Regnvejr', icon: '🌧️', bpm: 84, root: 62, scale: [0, 3, 5, 7, 10], lead: 'marimba',
+    chords: [[0, 3, 7], [-4, 0, 3], [3, 7, 10], [-2, 2, 5]],
+    bg: 'linear-gradient(#cfe3f2, #8fb3cf)', edge: '#8fb3cf', tile: '#e6f0f8',
+    start: { kick: [0, 5], hat: [0, 1, 2, 3, 4, 5, 6, 7], mel: [[0, 1], [2, 2], [3, 3], [5, 2], [6, 4]] } },
+  { name: 'Havet', icon: '🌊', bpm: 66, root: 64, scale: [0, 2, 4, 7, 9], lead: 'flute',
+    chords: [[0, 4, 7], [-3, 0, 4], [5, 9, 12], [7, 11, 14]],
+    bg: 'linear-gradient(#b9f0ff, #3fa7d6)', edge: '#3fa7d6', tile: '#e2f8ff',
+    start: { kick: [0], snare: [4], mel: [[0, 2], [3, 1], [4, 2], [6, 3]] } },
+  { name: 'Rock', icon: '🎸', bpm: 128, root: 52, scale: [0, 3, 5, 7, 10], lead: 'rock',
+    chords: [[0, 7, 12], [3, 10, 15], [5, 12, 17], [3, 10, 15]],
+    bg: 'linear-gradient(#ff6b6b, #3a0f1f)', edge: '#3a0f1f', tile: '#6b2335', dark: true,
+    start: { kick: [0, 3, 4], snare: [2, 6], hat: [0, 1, 2, 3, 4, 5, 6, 7], mel: [[0, 4], [1, 4], [3, 3], [4, 4], [6, 2]] } },
+  { name: 'Cirkus', icon: '🎪', bpm: 138, root: 60, scale: [0, 2, 4, 7, 9], lead: 'organ',
+    chords: [[0, 4, 7], [-5, -1, 2], [0, 4, 7], [-5, -1, 2]],
+    bg: 'linear-gradient(#fff0f0, #ffb3b3)', edge: '#ffb3b3', tile: '#fff8f8',
+    start: { kick: [0, 4], snare: [2, 6], mel: [[0, 2], [1, 1], [2, 0], [4, 3], [5, 2], [6, 1]] } },
 ];
 const ROW_COLORS = ['#ff3b6b', '#ff8a00', '#ffc400', '#06d6a0', '#3a86ff'];
 const DRUMS = [['hat', '✨', '#c0c6d6'], ['snare', '👏', '#9aa3b8'], ['kick', '🥁', '#6c7690']];
 
 const CSS = `
-.mm-picker { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:4vmin; flex-wrap:wrap; padding:12vh 6vw; }
-.mm-song { width:min(18vw, 30vh); aspect-ratio:1; border:none; border-radius:22%; color:#fff; font-weight:900;
+.mm-picker { position:absolute; inset:0; display:grid; grid-template-columns: repeat(4, auto); align-content:center; justify-content:center; gap:3.5vmin; padding:12vh 4vw 6vh; }
+@media (orientation: portrait) { .mm-picker { grid-template-columns: repeat(2, auto); } }
+.mm-song { width:min(19vw, 34vh); aspect-ratio:1; border:none; border-radius:22%; color:#fff; font-weight:900;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1vmin;
   box-shadow: 0 1vmin 0 rgba(0,0,0,.18); font-size:min(3vw, 4.5vh); text-shadow: 0 2px 0 rgba(0,0,0,.2); }
 .mm-song span { font-size:2.6em; line-height:1; }
@@ -68,6 +85,10 @@ export default {
       if (song.lead === 'pluck') { kit.tone(f, { at: a, dur: 0.45, type: 'triangle', vol: 0.22, attack: 0.003 }); kit.tone(f * 2, { at: a, dur: 0.15, vol: 0.05 }); }
       if (song.lead === 'square') kit.tone(f, { at: a, dur: 0.3, type: 'square', vol: 0.07, attack: 0.004 });
       if (song.lead === 'bell') { kit.tone(f, { at: a, dur: 1.4, vol: 0.18, attack: 0.002 }); kit.tone(f * 2.76, { at: a, dur: 0.5, vol: 0.04 }); }
+      if (song.lead === 'marimba') { kit.tone(f, { at: a, dur: 0.4, vol: 0.26, attack: 0.002 }); kit.tone(f * 4, { at: a, dur: 0.06, vol: 0.05, attack: 0.001 }); }
+      if (song.lead === 'flute') { kit.tone(f, { at: a, dur: 0.6, vol: 0.17, attack: 0.06 }); kit.tone(f * 2, { at: a, dur: 0.5, vol: 0.025, attack: 0.06 }); }
+      if (song.lead === 'rock') { kit.tone(f, { at: a, dur: 0.3, type: 'square', vol: 0.06, attack: 0.003 }); kit.tone(f * 0.5, { at: a, dur: 0.3, type: 'sawtooth', vol: 0.05, attack: 0.003 }); kit.tone(f * 0.75, { at: a, dur: 0.3, type: 'sawtooth', vol: 0.03 }); }
+      if (song.lead === 'organ') { kit.tone(f, { at: a, dur: 0.28, type: 'square', vol: 0.045, attack: 0.005 }); kit.tone(f * 2, { at: a, dur: 0.28, vol: 0.07, attack: 0.005 }); }
       if (song.lead === 'saw') { kit.tone(f, { at: a, dur: 0.25, type: 'sawtooth', vol: 0.06, attack: 0.004 }); kit.tone(f * 1.005, { at: a, dur: 0.25, type: 'sawtooth', vol: 0.04 }); }
     }
     const drum = {
@@ -118,7 +139,7 @@ export default {
       SONGS.forEach((s, i) => {
         const b = document.createElement('button');
         b.className = 'mm-song';
-        b.style.background = ['#ff9f1c', '#2bb24c', '#3d4bb0', '#7b3fd1'][i];
+        b.style.background = ['#ff9f1c', '#2bb24c', '#3d4bb0', '#7b3fd1', '#5b8fb9', '#1fa2d6', '#d62839', '#ff5d8f'][i];
         b.innerHTML = `<span>${s.icon}</span>${s.name}`;
         b.addEventListener('click', () => { kit.sfx.blip(7); openSong(s); });
         p.appendChild(b);
