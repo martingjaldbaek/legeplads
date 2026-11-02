@@ -13,10 +13,13 @@ import ballon from '../games/ballon.js';
 import musik from '../games/musik.js';
 import instrumenter from '../games/instrumenter.js';
 import tryllemaling from '../games/tryllemaling.js';
+import dyrpuslespil from '../games/dyrpuslespil.js';
+import blandeansigt from '../games/blandeansigt.js';
+import blandefigur from '../games/blandefigur.js';
 
 // To add a game: create games/<name>.js (see README) and add it here.
 const GAMES = [bobler, former, xylofon, maling, tryllemaling, boh, bondegaard, badetid,
-  farver, ansigt, ballon, instrumenter, musik];
+  farver, ansigt, blandeansigt, blandefigur, dyrpuslespil, ballon, instrumenter, musik];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;
