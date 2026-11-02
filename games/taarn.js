@@ -300,7 +300,13 @@ export default {
     cv.addEventListener('pointercancel', release);
 
     /* ---------- buttons ---------- */
-    dozerBtn.addEventListener('pointerdown', e => { e.preventDefault(); if (!dozer) startDozer(); });
+    dozerBtn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (!dozer) { startDozer(); return; }
+      // pressed again while it's out: it turns round and charges again
+      dozer.dir = 1; dozer.hitSaid = false;
+      kit.tone(330, { dur: 0.12, type: 'square', vol: 0.08 }); kit.tone(262, { at: 0.14, dur: 0.18, type: 'square', vol: 0.08 });
+    });
     tidyBtn.addEventListener('pointerdown', e => {
       e.preventDefault();
       const list = blocks.filter(b => !b.held);
@@ -348,9 +354,9 @@ export default {
       }
       if (dozer) {
         const d = dozer.body;
-        d.vx = dozer.speed * dozer.dir; d.vy = 0;
+        d.vx = dozer.speed * dozer.dir; d.vy = 0; d.w = 0;
         if (dozer.dir > 0 && d.x > dozer.turnAt) { dozer.dir = -1; }
-        if (dozer.dir < 0 && d.x < -3) stopDozer();
+        if (dozer.dir < 0 && d.x < -2.5) stopDozer();
       }
       const dyn = blocks;
       for (const b of dyn) if (b.invM) { b.vy += GRAV * DT; b.vx *= 0.999; b.vy *= 0.999; b.w *= 0.985; }
@@ -426,7 +432,8 @@ export default {
         b.x += b.vx * DT; b.y += b.vy * DT; b.a += b.w * DT;
         if (b.invM) maxV = Math.max(maxV, sp, Math.abs(b.w) * b.r);
         // anything that escapes somehow comes back from the sky
-        if (b.y > HU + 3 || b.x < -3 || b.x > WU + 3) { b.x = WU / 2; b.y = -2; b.vx = b.vy = b.w = 0; }
+        // (not the bulldozer: it leaves on the left, and teleporting it kept it driving forever)
+        if (b !== dozer?.body && (b.y > HU + 3 || b.x < -3 || b.x > WU + 3)) { b.x = WU / 2; b.y = -2; b.vx = b.vy = b.w = 0; }
       }
       return maxV;
     }
