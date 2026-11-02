@@ -26,7 +26,7 @@ jobs:
       - name: Build site and stamp the service worker
         run: |
           mkdir _site
-          rsync -a --exclude '.git*' --exclude '.github' --exclude '_site' --exclude 'tools' --exclude 'README.md' ./ _site/
+          rsync -a --exclude '.git*' --exclude '.github' --exclude '_site' --exclude 'tools' --exclude 'README.md' --exclude 'AGENTS.md' --exclude 'CLAUDE.md' ./ _site/
           python3 - <<'EOF'
           import json, os
           os.chdir('_site')
