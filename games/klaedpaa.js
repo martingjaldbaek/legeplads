@@ -125,18 +125,44 @@ export default {
       return x > r.left + r.width * 0.08 && x < r.right - r.width * 0.05 && y > r.top - r.height * 0.05 && y < r.bottom + r.height * 0.04;
     }
 
+    // Every drag in progress, so the outing (and a new touch) can cancel it. iOS sometimes swallows a pointerup
+    // (edge gestures, a second finger); without this a float copy stayed frozen on screen while the child danced,
+    // a worn item stayed hidden, and kit.draggable ignored that tile or slot for good.
+    const drags = new Map();   // element -> { pid, f, g, h }
+    function cancelDrag(el) {
+      const d = drags.get(el);
+      if (!d) return;
+      drags.delete(el);
+      if (d.f) d.f.remove();
+      if (d.g) d.g.style.opacity = '';
+      d.h.release();
+    }
+    const cancelAllDrags = () => [...drags.keys()].forEach(cancelDrag);
+    // a new touch always wins over a stale one (must be registered before kit.draggable's own listener)
+    const staleGuard = el => el.addEventListener('pointerdown', e => {
+      const d = drags.get(el);
+      if (d && d.pid !== e.pointerId) cancelDrag(el);
+    });
+
     WARDROBE.forEach(id => {
       const tile = document.createElement('div');
       tile.className = 'kp-tile';
       tile.innerHTML = tileIcon(id);
       ward.appendChild(tile);
-      let f = null;
-      kit.draggable(tile, {
-        start(e) { if (busy) return false; f = floatFor(id, e.clientX, e.clientY); kit.sfx.pickUp(); },
-        move(e) { moveFloat(f, e.clientX, e.clientY); },
+      staleGuard(tile);
+      const h = kit.draggable(tile, {
+        start(e) {
+          if (busy) return false;
+          drags.set(tile, { pid: e.pointerId, f: floatFor(id, e.clientX, e.clientY), h });
+          kit.sfx.pickUp();
+        },
+        move(e) { const d = drags.get(tile); if (d) moveFloat(d.f, e.clientX, e.clientY); },
         end(e) {
-          if (overChild(e.clientX, e.clientY)) { f.remove(); wear(id); } else poof(f);
-          f = null;
+          const d = drags.get(tile);
+          if (!d) return;
+          drags.delete(tile);
+          // no dressing once the child is getting ready to go out
+          if (!busy && overChild(e.clientX, e.clientY)) { d.f.remove(); wear(id); } else poof(d.f);
         },
       });
     });
@@ -144,20 +170,22 @@ export default {
     // clothes already on the child can be dragged off (or dropped back on)
     SLOTS.forEach(slot => {
       const g = slotEl[slot];
-      let f = null;
-      kit.draggable(g, {
+      staleGuard(g);
+      const h = kit.draggable(g, {
         start(e) {
           if (busy || !worn[slot]) return false;
-          f = floatFor(worn[slot], e.clientX, e.clientY);
-          g.style.visibility = 'hidden';
+          drags.set(g, { pid: e.pointerId, f: floatFor(worn[slot], e.clientX, e.clientY), g, h });
+          g.style.opacity = '0';   // not visibility:hidden – a hidden slot can't be touched, so a stale drag couldn't be undone
           kit.sfx.pickUp();
         },
-        move(e) { moveFloat(f, e.clientX, e.clientY); },
+        move(e) { const d = drags.get(g); if (d) moveFloat(d.f, e.clientX, e.clientY); },
         end(e) {
-          g.style.visibility = '';
-          if (overChild(e.clientX, e.clientY)) { f.remove(); kit.sfx.plop(); kit.replay(g, 'kp-on'); }
-          else { worn[slot] = null; g.innerHTML = ''; poof(f); }
-          f = null;
+          const d = drags.get(g);
+          if (!d) return;
+          drags.delete(g);
+          g.style.opacity = '';
+          if (busy || overChild(e.clientX, e.clientY)) { d.f.remove(); kit.sfx.plop(); kit.replay(g, 'kp-on'); }
+          else { worn[slot] = null; g.innerHTML = ''; poof(d.f); }
         },
       });
     });
@@ -188,12 +216,14 @@ export default {
     function checkReady() {
       if (busy || fitting() < READY) return;
       busy = true;
+      cancelAllDrags();
       t.later(() => { setMood('kp-happy'); kit.say('Nu er jeg klar!', { pitch: 1.3 }); kit.sfx.chime(); }, 1500);
       t.later(goOut, 2700);
     }
 
     let loop = null;
     function goOut() {
+      cancelAllDrags();
       root.classList.add('kp-out');
       kit.sfx.fanfare();
       kit.bigBurst();
@@ -210,16 +240,25 @@ export default {
     }
     function comeIn() {
       clearInterval(loop);
+      cancelAllDrags();
       root.classList.remove('kp-out');
       setMood(null);
       kit.say('Det var sjovt!', { pitch: 1.3 });
       t.later(() => {
+        cancelAllDrags();
         SLOTS.forEach((s, i) => t.later(() => {
-          if (!worn[s]) return;
-          worn[s] = null; slotEl[s].innerHTML = ''; kit.sfx.fwip();
+          const had = worn[s];
+          worn[s] = null;
+          slotEl[s].innerHTML = ''; slotEl[s].style.opacity = '';
+          if (had) kit.sfx.fwip();
         }, i * 90));
       }, 1000);
-      t.later(() => { setWeather(); busy = false; }, 2200);
+      t.later(() => {
+        // belt and braces: nothing worn, no stray floating copies
+        SLOTS.forEach(s => { worn[s] = null; slotEl[s].innerHTML = ''; slotEl[s].style.opacity = ''; });
+        root.querySelectorAll('.kp-float').forEach(f => f.remove());
+        setWeather(); busy = false;
+      }, 2200);
     }
 
     function setWeather(w) {
@@ -274,6 +313,6 @@ export default {
     layout();
     const offResize = kit.onResize(root, layout);
     t.later(() => kit.say(WNAME[weather], { pitch: 1.2 }), 400);
-    return () => { t.clear(); offResize(); root.classList.remove('kp-out'); };
+    return () => { cancelAllDrags(); t.clear(); offResize(); root.classList.remove('kp-out'); };
   },
 };

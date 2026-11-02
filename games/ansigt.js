@@ -169,6 +169,7 @@ export default {
     function land(el, part, x, y) {
       const p = { el, part, u: (x - cx) / R, v: (y - cy) / R };
       wrap.appendChild(el);
+      el.style.pointerEvents = '';
       positionOnFace(p);
       el.style.zIndex = ++z;
       kit.replay(el, 'land');
@@ -188,6 +189,7 @@ export default {
           el = document.createElement('div');
           el.className = 'face-part lift';
           el.innerHTML = `<span>${glyph(part)}</span>`;
+          el.style.pointerEvents = 'none';   // in flight it must never catch touches meant for the tray
           sizePart(el, part);
           el.style.zIndex = 50;
           root.appendChild(el);

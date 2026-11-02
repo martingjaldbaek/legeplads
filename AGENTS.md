@@ -86,6 +86,20 @@ Then import it in `js/app.js`, add it to `GAMES`, and add a line to README.md.
   - app.js stretches the body by the measured gap (`--vp-gap`), and the `#dims` line on the home screen shows the
     numbers.
   - A fixed extra overdraw was tried and **did not help**, and it hid the bottom of games. Don't reintroduce it.
+- **Lost fingers (the most common iPad bug here):** iOS sometimes never delivers `pointerup`, for example near
+  the screen edges (swipe-home), with Guided Access, or with a second finger. Every input path must survive that:
+  - **A new touch always wins.** Never write `if (finger) return` locks. `kit.draggable` already finishes a stale
+    drag when the next touch arrives anywhere.
+  - **Handle `pointercancel`** like `pointerup`. For drags that start on a small source, listen for move, up and
+    cancel on `window`, not only on the element.
+  - **In-flight copies** (the floating copy you drag out of a tray) get `pointer-events: none`. Otherwise a
+    stranded copy sits on top of its source and swallows every later touch.
+  - **Keep things clear of the bottom edge:** don't park important draggables in the bottom ~70 px.
+- **Held sounds** (`kit.sustain`): give every instance its own handle and stop exactly that one. Never share
+  one variable across overlapping uses; that leaked a forever-buzzing engine in Bilvask. Stop them all in `stop()`,
+  and give long-running ones a safety timeout.
+- **SVG input:** don't rely on `getScreenCTM()`. Compute the scene↔screen mapping from your own viewBox, and take
+  pointer events on the game's root div rather than on SVG children.
 - **SVG:**
   - With `transform-box: fill-box`, SVG `rotate(a x y)` attributes shift. Put such groups in
     `transform-box: view-box`.

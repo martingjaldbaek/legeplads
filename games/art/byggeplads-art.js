@@ -16,7 +16,7 @@ export const SKY = `
   <rect x="-3000" y="-3000" width="7400" height="3860" fill="url(#bp-sky)"/>
   <rect x="-3000" y="860" width="7400" height="3000" fill="#c9a26b"/>
   <rect x="-3000" y="860" width="7400" height="16" fill="#b48a55"/>
-  <circle cx="110" cy="110" r="60" fill="#ffd23f" opacity=".9"/>`;
+  <circle class="bp-sun" cx="110" cy="110" r="60" fill="#ffd23f" opacity=".9"/>`;
 export const DEFS = `<defs>
   <linearGradient id="bp-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8ff"/><stop offset="1" stop-color="#e3f5ff"/></linearGradient>
   <pattern id="bp-stripes" width="80" height="80" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">

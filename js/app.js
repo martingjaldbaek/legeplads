@@ -83,6 +83,7 @@ function openGame(g) {
 }
 
 function goHome() {
+  kit.clearDrags();
   if (stopGame) stopGame();
   stopGame = null;
   current = null;

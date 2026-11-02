@@ -130,6 +130,8 @@ export default {
     let dozer = null;     // { body, dir, phase, sound }
     const arbiters = new Map();
     let awake = true, stillFor = 0, record = 0, settleCheck = false;
+    let leftU = 0;   // world x of the supply box's right edge in landscape (0 in portrait): no block may rest left of it
+    let topU = 0;    // world y of the supply row's bottom edge in portrait (0 in landscape): held blocks stay below it
 
     /* ---------- layout ---------- */
     function layout() {
@@ -145,6 +147,7 @@ export default {
       if (oldS !== S && blocks.length) { blocks.forEach(b => { b.x *= oldS / S; b.y *= oldS / S; }); }
       // in landscape the supply box sits on the left: the wall stands just right of it, so blocks never hide behind it
       const leftEdge = portrait ? 0 : (cellPx() * 1 + 14 + 3.2 * Math.min(W, H) / 100 + 8) / S;
+      leftU = leftEdge;
       statics = [
         makeBody(WU / 2, groundY + 5, WU * 2, 5, false),
         makeBody(leftEdge - 5, HU / 2 - 20, 5, HU + 40, false),
@@ -166,6 +169,7 @@ export default {
       const bs = 'calc(env(safe-area-inset-top) + 14px)';
       Object.assign(dozerBtn.style, { top: bs, right: 'calc(env(safe-area-inset-right) + 14px)' });
       Object.assign(tidyBtn.style, { top: bs, right: `calc(env(safe-area-inset-right) + 28px + max(70px,10vmin))` });
+      { const br = box.getBoundingClientRect(), cr = cv.getBoundingClientRect(); topU = portrait ? (br.bottom - cr.top) / S : 0; }
       if (portrait) {
         // below the supply row, top right, out of the building area
         const below = `calc(env(safe-area-inset-top) + 34px + ${cell}px + 3.2vmin)`;
@@ -185,6 +189,7 @@ export default {
       box.appendChild(s);
       s.addEventListener('pointerdown', e => {
         e.preventDefault();
+        dropStale(e);
         kit.unlock && kit.unlock();
         const [x, y] = toWorld(e);
         const b = addBlock(ty, x, y, PALETTE[Math.floor(Math.random() * PALETTE.length)]);
@@ -244,8 +249,16 @@ export default {
       b.invM = 0; b.invI = 0;
       for (const k of [...arbiters.keys()]) if (k.split('|').includes(String(b.id))) arbiters.delete(k);
     }
+    // A first finger (isPrimary) means no other finger is down, so anything still marked as held belongs to a
+    // pointer whose pointerup never arrived (iOS edge gestures, Guided Access…). Let go of it, or it would hang
+    // in the air for good: held blocks are kinematic, so nothing can knock them loose.
+    function dropStale(e) {
+      if (!e.isPrimary) return;
+      for (const [id, h] of [...held]) if (id !== e.pointerId) release({ pointerId: id, clientX: -1e4, clientY: -1e4 });
+    }
     cv.addEventListener('pointerdown', e => {
       e.preventDefault();
+      dropStale(e);
       const [x, y] = toWorld(e);
       const b = hit(x, y);
       if (!b) return;
@@ -253,7 +266,10 @@ export default {
       const c = Math.cos(-b.a), s = Math.sin(-b.a), dx = x - b.x, dy = y - b.y;
       grab(e, b, c * dx - s * dy, s * dx + c * dy, false);
     });
-    cv.addEventListener('pointermove', e => {
+    // move/up are listened for on window: a block taken from the supply box starts with its pointer on the box's
+    // tile, and on iPad touch events stay with that tile (implicit capture) if moving the capture to the canvas
+    // fails, so canvas-only listeners never heard the finger lift and the block hung behind the box for ever.
+    const onMove = e => {
       const h = held.get(e.pointerId);
       if (!h) return;
       const [x, y] = toWorld(e);
@@ -263,7 +279,7 @@ export default {
       if (h.hist.length > 6) h.hist.shift();
       if (h.pending && h.moved > 0.2) { take(h); kit.sfx.pickUp(); }
       wake();
-    });
+    };
     const release = e => {
       const h = held.get(e.pointerId);
       if (!h) return;
@@ -296,8 +312,9 @@ export default {
       settleCheck = true;
       wake();
     };
-    cv.addEventListener('pointerup', release);
-    cv.addEventListener('pointercancel', release);
+    addEventListener('pointermove', onMove);
+    addEventListener('pointerup', release);
+    addEventListener('pointercancel', release);
 
     /* ---------- buttons ---------- */
     dozerBtn.addEventListener('pointerdown', e => {
@@ -343,7 +360,8 @@ export default {
         const c = Math.cos(b.a), s = Math.sin(b.a);
         // where the block centre should be so the grip point sits under the finger
         let tx = h.tx - (c * h.ox - s * h.oy), ty = h.ty - (s * h.ox + c * h.oy) - 0.15;
-        tx = Math.max(-2, Math.min(WU - b.hw, tx));
+        tx = Math.max(leftU + b.hw, Math.min(WU - b.hw, tx));   // never behind the supply box…
+        if (topU) ty = Math.max(topU + Math.max(b.hw, b.hh), ty);   // …or the supply row
         ty = Math.min(groundY - Math.max(b.hw, b.hh) * Math.abs(Math.sin(b.a)) - b.hh * Math.abs(Math.cos(b.a)), ty);
         let vx = (tx - b.x) / DT * 0.35, vy = (ty - b.y) / DT * 0.35;
         const sp = Math.hypot(vx, vy); if (sp > 30) { vx *= 30 / sp; vy *= 30 / sp; }
@@ -360,6 +378,8 @@ export default {
       }
       const dyn = blocks;
       for (const b of dyn) if (b.invM) { b.vy += GRAV * DT; b.vx *= 0.999; b.vy *= 0.999; b.w *= 0.985; }
+      // safety net: a loose block that somehow ended up behind the supply box is nudged back out
+      if (leftU) for (const b of dyn) if (b.invM && b.x < leftU + b.hw * 0.5) { b.x = leftU + b.hw + 0.02; if (b.vx < 0) b.vx = 0; }
 
       // contacts
       const all = dozer ? [...dyn, dozer.body] : dyn;
@@ -625,6 +645,9 @@ export default {
 
     return () => {
       cancelAnimationFrame(raf);
+      removeEventListener('pointermove', onMove);
+      removeEventListener('pointerup', release);
+      removeEventListener('pointercancel', release);
       t.clear();
       offResize();
       if (dozer) dozer.sound.stop(0.05);

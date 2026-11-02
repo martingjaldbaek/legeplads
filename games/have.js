@@ -54,6 +54,46 @@ export default {
     let VW = 1000, VH = 1000, L = {};      // viewBox size and layout positions
     let svg, plantEls = [], pileEl, critLayer, dropLayer, floatLayer, canG, canTilt, basketEl, packetEls = [], sunIn;
 
+    /* ---------- robust dragging ----------
+     * kit.draggable relies on pointer capture and on the pointerup arriving. On the iPad a touch can end
+     * without either (system gestures, a second finger, capture lost on an SVG group); the drag then never
+     * ended, its floating packet stayed in front of the tray, and the source refused all new drags.
+     * Here: move/up/cancel are heard on the window, a cancelled drag cleans up without acting, a new touch
+     * ends any drag that has gone quiet, and a drag with no events for `stale` ms ends by itself. */
+    const drags = new Set();
+    function finishDrag(d, e, cancelled) {
+      if (d.id === null) return;
+      d.id = null;
+      drags.delete(d);
+      removeEventListener('pointermove', d.onMove, true);
+      removeEventListener('pointerup', d.onUp, true);
+      removeEventListener('pointercancel', d.onUp, true);
+      d.h.end(e, cancelled);
+    }
+    function drag(target, h, stale = 4000) {
+      const d = { id: null, last: null, t: 0, h, stale };
+      d.onMove = e => { if (e.pointerId !== d.id) return; d.last = e; d.t = performance.now(); if (h.move) h.move(e); };
+      d.onUp = e => { if (e.pointerId === d.id) finishDrag(d, e.type === 'pointerup' ? e : d.last, e.type !== 'pointerup'); };
+      target.addEventListener('pointerdown', e => {
+        if (d.id !== null) finishDrag(d, d.last, true);   // a stale drag on this source: a new touch always wins
+        if (h.start && h.start(e) === false) return;
+        e.preventDefault(); e.stopPropagation();
+        d.id = e.pointerId; d.last = e; d.t = performance.now();
+        try { target.setPointerCapture(e.pointerId); } catch (err) {}
+        addEventListener('pointermove', d.onMove, true);
+        addEventListener('pointerup', d.onUp, true);
+        addEventListener('pointercancel', d.onUp, true);
+        drags.add(d);
+      });
+    }
+    const endAllDrags = () => [...drags].forEach(d => finishDrag(d, d.last, true));
+    // any new touch ends drags whose finger has gone quiet (its pointerup was probably swallowed)
+    const onAnyDown = e => {
+      const now = performance.now();
+      [...drags].forEach(d => { if (d.id !== e.pointerId && now - d.t > 1200) finishDrag(d, d.last, true); });
+    };
+    addEventListener('pointerdown', onAnyDown, true);
+
     const el = (tag, attrs = {}, html = '') => {
       const e = document.createElementNS(NS, tag);
       for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -96,6 +136,7 @@ export default {
     }
 
     function build() {
+      endAllDrags();
       computeLayout();
       if (svg) svg.remove();
       svg = el('svg', { class: 'hv-svg', viewBox: `0 0 ${VW} ${VH}`, preserveAspectRatio: 'none' });
@@ -143,7 +184,7 @@ export default {
       bg.appendChild(basketEl);
       svg.appendChild(bg);
       drawPile();
-      dropLayer = el('g');
+      dropLayer = el('g', { 'pointer-events': 'none' });
       svg.appendChild(dropLayer);
       // watering can
       canG = el('g');
@@ -152,7 +193,7 @@ export default {
       svg.appendChild(canG);
       can.x = L.can[0]; can.y = L.can[1];
       bindCan();
-      floatLayer = el('g');
+      floatLayer = el('g', { 'pointer-events': 'none' });   // a floating packet must never catch the next touch meant for its source
       svg.appendChild(floatLayer);
       root.appendChild(svg);
       crits.length = 0;
@@ -182,18 +223,20 @@ export default {
     // ---------- seeds ----------
     function bindPacket(g, type) {
       let f = null;
-      kit.draggable(g, {
+      drag(g, {
         start(e) {
+          if (f) f.remove();
           const [x, y] = toSvg(e);
           f = el('g', { transform: `translate(${x} ${y}) rotate(-25) scale(${L.ps * 0.8})` }, packet(type, SEED_COLS[type]));
           floatLayer.appendChild(f);
           kit.replay(g, 'hv-wiggle');
           kit.sfx.pickUp();
         },
-        move(e) { const [x, y] = toSvg(e); f.setAttribute('transform', `translate(${x} ${y}) rotate(-25) scale(${L.ps * 0.8})`); },
-        end(e) {
+        move(e) { if (!f) return; const [x, y] = toSvg(e); f.setAttribute('transform', `translate(${x} ${y}) rotate(-25) scale(${L.ps * 0.8})`); },
+        end(e, cancelled) {
+          if (f) { f.remove(); f = null; }
+          if (cancelled || !e) { kit.sfx.whoosh(); return; }
           const [x, y] = toSvg(e);
-          f.remove(); f = null;
           let best = -1, bd = 220;
           L.holes.forEach(([hx, hy], i) => {
             const d = Math.hypot(hx - x, hy - y);
@@ -252,7 +295,7 @@ export default {
     // ---------- watering can ----------
     const can = { x: 0, y: 0, tx: 0, ty: 0, a: 0, drag: false, pour: 0, snd: 0 };
     function bindCan() {
-      kit.draggable(canTilt, {
+      drag(canTilt, {
         start(e) {
           can.drag = true;
           const [x, y] = toSvg(e);
@@ -262,7 +305,7 @@ export default {
         },
         move(e) { const [x, y] = toSvg(e); can.tx = x; can.ty = y + 80 * L.s; },
         end() { can.drag = false; updateHints(); },
-      });
+      }, 10000);   // holding still to pour is fine, but not forever
     }
     const drops = [];
     function canTip() {
@@ -277,7 +320,7 @@ export default {
     // ---------- harvest ----------
     function bindPlant(g, i) {
       let y0 = 0, pulled = 0;
-      kit.draggable(g, {
+      drag(g, {
         start(e) {
           const h = holes[i];
           if (h.stage < 0) return false;
@@ -289,7 +332,7 @@ export default {
           pulled = Math.max(-140, Math.min(0, toSvg(e)[1] - y0));
           g.style.transform = `translateY(${pulled * 0.4}px) scaleY(${1 - pulled / 500})`;
         },
-        end() { g.style.transform = ''; harvest(i); },
+        end(e, cancelled) { g.style.transform = ''; if (!cancelled && holes[i].stage === 4) harvest(i); },
       });
     }
     function harvest(i) {
@@ -351,6 +394,7 @@ export default {
     let raf = 0, last = performance.now();
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      drags.forEach(d => { if (now - d.t > d.stale) finishDrag(d, d.last, true); });
       // can follows the finger (or goes home) and tilts while held
       const gx = can.drag ? can.tx : L.can[0], gy = can.drag ? can.ty : L.can[1];
       can.x += (gx - can.x) * Math.min(1, dt * 14); can.y += (gy - can.y) * Math.min(1, dt * 14);
@@ -411,6 +455,6 @@ export default {
     raf = requestAnimationFrame(frame);
     const offResize = kit.onResize(root, () => { drops.splice(0).forEach(d => d.el.remove()); tweens.splice(0).forEach(w => w.done()); build(); });
     t.later(() => kit.say('Plant et frø!', { pitch: 1.25 }), 500);
-    return () => { cancelAnimationFrame(raf); t.clear(); offResize(); };
+    return () => { cancelAnimationFrame(raf); t.clear(); offResize(); endAllDrags(); removeEventListener('pointerdown', onAnyDown, true); };
   },
 };

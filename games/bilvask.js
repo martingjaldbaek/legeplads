@@ -197,9 +197,22 @@ export default {
     const onCar = p => p.x > -30 && p.x < 530 && p.y > -30 && p.y < 300;
 
     // ---------- sounds ----------
-    let engine = null;
-    function engineOn() { engine = kit.sustain({ type: 'sawtooth', freq: 55, vol: 0.05 }); engine.set(85, 0.4); }
-    function engineOff() { if (engine) { engine.set(45, 0.2); engine.stop(0.4); engine = null; } }
+    // Each engine hum has its own handle. (There used to be one shared variable: the next vehicle's engine
+    // started 100 ms before the leaving one's was stopped, so the old handle was overwritten and its
+    // sawtooth buzzed forever.) Every hum also stops itself after a few seconds as a safety net.
+    const engines = new Set();
+    function engineOn() {
+      const e = kit.sustain({ type: 'sawtooth', freq: 55, vol: 0.05 });
+      e.set(85, 0.4);
+      engines.add(e);
+      setTimeout(() => engineOff(e), 4000);
+      return e;
+    }
+    function engineOff(e) {
+      if (!e || !engines.has(e)) return;
+      engines.delete(e);
+      e.set(45, 0.2); e.stop(0.4);
+    }
     function honk() {
       const f = V[6];
       kit.tone(f, { dur: 0.32, type: 'square', vol: 0.08 }); kit.tone(f * 1.26, { dur: 0.32, type: 'square', vol: 0.06 });
@@ -261,9 +274,9 @@ export default {
       void car.offsetWidth;
       car.classList.add('drive', 'driving');
       placeCar();
-      engineOn();
+      const hum = engineOn();
       t.later(() => {
-        engineOff();
+        engineOff(hum);
         car.classList.remove('driving');
         kit.replay(car.firstChild, 'bounce');
         kit.sfx.splat();
@@ -274,7 +287,10 @@ export default {
 
     // ---------- pointer ----------
     function down(e) {
-      if (held || !step) return;
+      // a new touch always wins: if iOS swallowed the last finger's pointerup, drop that stale grip
+      if (held && held.id === e.pointerId) return;
+      if (held) { const old = held.tool; held = null; if (!(step === 'tyre' && old.used)) restTool(old); }
+      if (!step) return;
       let tl = null;
       if (step === 'soap' || step === 'rinse' || step === 'dry') tl = tools[step];
       else if (step === 'tyre') tl = tyres.find(x => !x.used);
@@ -511,8 +527,8 @@ export default {
         const old = car;
         old.classList.add('away', 'driving');
         old.style.transform = `translate(${W + 40}px, ${carY}px)`;
-        engineOn();
-        t.later(() => { engineOff(); old.remove(); }, 1400);
+        const hum = engineOn();
+        t.later(() => { engineOff(hum); old.remove(); }, 1400);
         t.later(nextVehicle, 1300);
       }, 1800);
     }
@@ -522,7 +538,7 @@ export default {
     t.later(nextVehicle, 200);
     return () => {
       alive = false;
-      t.clear(); offResize(); engineOff();
+      t.clear(); offResize(); [...engines].forEach(e => engineOff(e));
       root.removeEventListener('pointerdown', down);
       root.removeEventListener('pointermove', move);
       root.removeEventListener('pointerup', up);

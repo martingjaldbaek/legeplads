@@ -169,22 +169,43 @@ export function injectCSS(root, css) {
   root.appendChild(s);
 }
 
-/** Pointer-captured dragging of one element by one finger. start(e) may return false to refuse. */
+/* Drags whose finger may have been swallowed by iOS (edge gestures, Guided Access, a missed pointerup).
+   Any new touch anywhere finishes a drag that hasn't moved for a while, so nothing stays stuck mid-air. */
+const activeDrags = new Set();
+/** Forget all drags (app.js calls this when leaving a game, so no end() runs into a stopped game). */
+export function clearDrags() { activeDrags.clear(); }
+const STALE_MS = 1200;
+addEventListener('pointerdown', e => {
+  const now = performance.now();
+  for (const d of [...activeDrags]) if (d.id !== e.pointerId && now - d.at > STALE_MS) d.finish();
+}, { capture: true });
+
+/** Pointer-captured dragging of one element by one finger. start(e) may return false to refuse.
+ *  A drag always ends with end(e): on pointerup/cancel, or, if iOS lost the finger, at its last position
+ *  when the next touch arrives. */
 export function draggable(el, { start, move, end }) {
-  let id = null;
+  const d = { id: null, last: null, at: 0,
+    finish() { const old = d.last; d.id = null; activeDrags.delete(d); if (end && old) end(old); } };
   el.addEventListener('pointerdown', e => {
-    if (id !== null) return;
+    if (d.id === e.pointerId) return;
+    // a new touch on the same element always wins: finish the old drag, then start the new one
+    if (d.id !== null) d.finish();
     if (start && start(e) === false) return;
     e.preventDefault();
     e.stopPropagation();
-    id = e.pointerId;
-    try { el.setPointerCapture(id); } catch (err) {}
+    d.id = e.pointerId; d.last = e; d.at = performance.now();
+    activeDrags.add(d);
+    try { el.setPointerCapture(d.id); } catch (err) {}
   });
-  el.addEventListener('pointermove', e => { if (e.pointerId === id && move) move(e); });
-  const fin = e => { if (e.pointerId !== id) return; id = null; if (end) end(e); };
+  el.addEventListener('pointermove', e => {
+    if (e.pointerId !== d.id) return;
+    d.last = e; d.at = performance.now();
+    if (move) move(e);
+  });
+  const fin = e => { if (e.pointerId !== d.id) return; d.id = null; activeDrags.delete(d); if (end) end(e); };
   el.addEventListener('pointerup', fin);
   el.addEventListener('pointercancel', fin);
-  return { release() { id = null; } };
+  return { release() { d.id = null; activeDrags.delete(d); } };
 }
 
 /** Restart a CSS animation class on an element. */

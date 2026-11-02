@@ -56,6 +56,20 @@ for (const s of steps) {
     if (!s.noRelease) await mouse('mouseReleased', x1, y1);
   }
   if (s.up) await mouse('mouseReleased', ...s.up);
+  // touch input (as on the iPad): touchTap [x,y]; touchDrag [[x0,y0],[x1,y1]] with optional n and holdMs
+  if (s.touchTap || s.touchDrag) await send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+  if (s.touchTap) {
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: s.touchTap[0], y: s.touchTap[1] }] });
+    await sleep(s.holdMs || 60);
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
+  if (s.touchDrag) {
+    const [[x0, y0], [x1, y1]] = s.touchDrag, n = s.n || 20;
+    await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x0, y: y0 }] });
+    for (let i = 1; i <= n; i++) { await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x0 + (x1 - x0) * i / n, y: y0 + (y1 - y0) * i / n }] }); await sleep(s.stepMs || 16); }
+    if (s.holdMs) await sleep(s.holdMs);
+    await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  }
   if (s.shot) {
     const r = await send('Page.captureScreenshot', { format: 'png' });
     writeFileSync(`${out}-${++shot}.png`, Buffer.from(r.result.data, 'base64'));

@@ -15,7 +15,7 @@ const TRUCK_COLORS = ['#ff4d6d', '#3a86ff', '#06d6a0', '#8338ec', '#ff8a00'];
 const FLOOR_COLORS = ['#ff8a00', '#3a86ff', '#06d6a0', '#f15bb5', '#8338ec', '#ffc400', '#2ec4b6'];
 
 const CSS = `
-.bp-svg { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+.bp-svg { position:absolute; inset:0; width:100%; height:100%; touch-action:none; pointer-events:none; }
 .bp-nav { position:absolute; z-index:6; top: calc(env(safe-area-inset-top) + 14px); right: calc(env(safe-area-inset-right) + 14px);
   display:flex; gap:1.4vmin; }
 .bp-nav button { width:max(84px,12vmin); height:max(70px,9.5vmin); border:none; border-radius:2.4vmin; padding:.6vmin;
@@ -74,13 +74,29 @@ export default {
     };
     const lerp = (a, b, k) => a + (b - a) * k;
     const talk = (el, ms = 700) => { el.classList.add('talk'); t.later(() => el.classList.remove('talk'), ms); };
+    // Scene ↔ screen mapping, done by hand from our own viewBox rather than getScreenCTM (unreliable in
+    // Safari for an outer <svg> inside fixed/transformed boxes). The viewBox always has the root's exact aspect
+    // ratio, so there is no letterboxing: one scale, one offset.
+    const vb = { x: 0, y: 0, w: 1400, h: 1000, s: 1 };
+    // horizontal span each page needs to show; vertically everything from y = 40 to the ground and a bit below
+    const FOCUS = [[-10, 1310], [200, 1220], [110, 1270]];
+    function fitView() {
+      if (!svg) return;
+      const W = root.clientWidth || 1, H = root.clientHeight || 1;
+      const [x0, x1] = FOCUS[pageIdx];
+      const s = Math.min(W / (x1 - x0), H / 960);
+      vb.s = s; vb.w = W / s; vb.h = H / s;
+      vb.x = (x0 + x1) / 2 - vb.w / 2;
+      // spare height: mostly sky above, some ground below (so the scene isn't squashed at the bottom in portrait)
+      const spare = vb.h - 960;
+      vb.y = 40 - spare * 0.72;
+      svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+      const sun = svg.querySelector('.bp-sun');
+      if (sun) { sun.setAttribute('cx', vb.x + 120); sun.setAttribute('cy', vb.y + 120); }
+    }
+    const toScene = (cx, cy) => { const r = root.getBoundingClientRect(); return { x: vb.x + (cx - r.left) / vb.s, y: vb.y + (cy - r.top) / vb.s }; };
     // confetti uses screen pixels: convert a scene point
-    const toScreen = (svg, x, y) => {
-      const p = svg.createSVGPoint(); p.x = x; p.y = y;
-      const s = p.matrixTransform(svg.getScreenCTM());
-      const r = root.getBoundingClientRect();
-      return [s.x - r.left, s.y - r.top];
-    };
+    const toScreen = (_svg, x, y) => [(x - vb.x) * vb.s, (y - vb.y) * vb.s];
 
     /* ================= 1. digger + truck ================= */
     function diggerPage(svg) {
@@ -456,7 +472,6 @@ export default {
       }
 
       const onDrum = p => p.x > MX + 30 && p.x < MX + 460 && p.y > GROUND - 360 && p.y < GROUND - 100;
-      const onMould = p => p.x > MX0 && p.x < MX1 && p.y > MY - MH - 60;
       return {
         update,
         down(p) {
@@ -466,7 +481,8 @@ export default {
             talk(truck, 500);
             return;
           }
-          if (wet && !drying && onMould(p)) {
+          // once the cement is wet, a tap anywhere presses a hand print (at the nearest spot in the mould)
+          if (wet && !drying) {
             hand(Math.max(MX0 + 40, Math.min(MX1 - 40, p.x)), MY - MH / 2, 1.1, prints % 2);
             prints++;
             kit.sfx.splat();
@@ -479,7 +495,8 @@ export default {
             }
             return;
           }
-          if (p.x < MX + 20) pouring = true;
+          // anywhere else: hold to pour (the drum turns while it pours)
+          pouring = true;
         },
         move() {},
         up() { pouring = false; },
@@ -497,24 +514,31 @@ export default {
       navBtns.forEach((b, j) => b.classList.toggle('on', j === i));
       svg = document.createElementNS(NS, 'svg');
       svg.setAttribute('class', 'bp-svg');
-      svg.setAttribute('viewBox', '0 0 1400 1000');
-      svg.setAttribute('preserveAspectRatio', 'xMidYMax meet');
+      svg.setAttribute('preserveAspectRatio', 'none');
       root.insertBefore(svg, nav);
+      active = null;
       page = PAGES[i](svg);
-      const pt = e => { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); };
-      let active = null;
-      svg.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        if (active !== null) return;
-        active = e.pointerId;
-        try { svg.setPointerCapture(e.pointerId); } catch (err) {}
-        page.down(pt(e));
-      });
-      svg.addEventListener('pointermove', e => { if (e.pointerId === active) page.move(pt(e)); });
-      const up = e => { if (e.pointerId === active) { active = null; page.up(pt(e)); } };
-      svg.addEventListener('pointerup', up);
-      svg.addEventListener('pointercancel', up);
+      fitView();
     }
+
+    // Input lives on the root div (the svg ignores pointers), so capture is on a plain HTML element, which Safari
+    // handles reliably. Touching anywhere drives the current station. One finger at a time, but a new touch
+    // always wins, so a pointerup that iOS swallowed (edge gestures) can never lock the game.
+    let active = null;
+    root.style.touchAction = 'none';
+    root.addEventListener('pointerdown', e => {
+      if (e.target.closest('.bp-nav') || e.target.closest('#homeBtn')) return;
+      e.preventDefault();
+      if (active !== null && active !== e.pointerId) page.up(toScene(e.clientX, e.clientY));
+      active = e.pointerId;
+      try { root.setPointerCapture(e.pointerId); } catch (err) {}
+      page.down(toScene(e.clientX, e.clientY));
+    });
+    root.addEventListener('pointermove', e => { if (e.pointerId === active) page.move(toScene(e.clientX, e.clientY)); });
+    const up = e => { if (e.pointerId === active) { active = null; page.up(toScene(e.clientX, e.clientY)); } };
+    root.addEventListener('pointerup', up);
+    root.addEventListener('pointercancel', up);
+    root.addEventListener('lostpointercapture', up);
     show(0);
 
     let raf = 0, last = performance.now();
@@ -525,7 +549,7 @@ export default {
       page.update(dt);
     }
     raf = requestAnimationFrame(frame);
-    const offResize = kit.onResize(root, () => {});
+    const offResize = kit.onResize(root, fitView);
 
     return () => { cancelAnimationFrame(raf); t.clear(); offResize(); if (page) page.stop(); };
   },
