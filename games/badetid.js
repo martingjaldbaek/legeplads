@@ -181,7 +181,8 @@ export default {
       // waiting spot: on the floor in front of the tub's left end
       const s = 0.45;
       waitX = Math.max(s * box * 0.55 + 8, side / 2);
-      waitY = H - s * box * 0.5 - 12;
+      // well clear of the bottom edge: iPadOS holds back touches there for its swipe-home gesture
+      waitY = H - s * box * 0.5 - Math.max(70, H * 0.1);
       // resize the layers, keeping what's painted on them
       for (const L of [body, mud, foam, wet]) {
         const old = document.createElement('canvas');
@@ -352,7 +353,7 @@ export default {
     }
 
     /* ---------- input: touching anywhere grabs the current tool ---------- */
-    const overTub = x => Math.abs(x - W / 2) < tubW * 0.48;
+    const overTub = x => Math.abs(x - W / 2) < tubW * 0.6;
     const local = (x, y) => [x - bx, y - by - floatY()];
     const overSubject = (x, y) => { const [lx, ly] = local(x, y); return lx > 0 && lx < box && ly > 0 && ly < box * RIM + box * 0.05; };
 
@@ -364,7 +365,9 @@ export default {
     }
 
     fx.addEventListener('pointerdown', e => {
-      if (finger) return;
+      // one finger at a time, but a new touch always wins: if iOS swallowed the last finger's pointerup
+      // (e.g. to its edge gestures), a stale finger must never lock the game
+      if (finger && finger.id === e.pointerId) return;
       const x = e.clientX, y = e.clientY;
       finger = { id: e.pointerId, x, y, px: x, py: y, x0: x, y0: y, moved: 0 };
       try { fx.setPointerCapture(e.pointerId); } catch (err) {}
@@ -396,8 +399,8 @@ export default {
       const f = finger;
       finger = null;
       if (step === 'arrive') {
-        // a tap, or letting go anywhere over the tub, puts it in the bath
-        if (f.moved < 20 || (overTub(f.x) && f.y < tubTop + box * 0.5)) intoTub();
+        // a tap, or letting go anywhere over the tub (or just above it), puts it in the bath
+        if (f.moved < 20 || (overTub(f.x) && f.y > tubTop - box * 0.6)) intoTub();
         else { subj.style.transition = ''; placeSubject(); subj.classList.add('wait'); kit.sfx.boing(); }
         return;
       }
