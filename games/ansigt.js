@@ -1,6 +1,6 @@
 /* Ansigt: build a silly face. Drag eyes, noses, mouths, hats… from the tray onto the face – anywhere goes.
- * The tabs above the tray switch between five drawers of parts. The drop zone reaches well past the face's
- * edge so hats and ears are easy to place. Each part is named as it lands; drag one off the face to remove it.
+ * The tabs above the tray switch between five drawers of parts. The drop zone reaches a little past the
+ * face's edge so hats and ears are easy to place. Each part is named as it lands; drag one off the face to remove it.
  * Ears flip to face the right way on either side. Tap the face and it giggles. 🔄 gives a new, blank face.
  */
 // Tabs of parts: [emoji, spoken name, size relative to the face radius, flags].
@@ -156,8 +156,8 @@ export default {
       setFlip(p.el, p.part, p.u);
       setXY(p.el, R + p.u * R, R + p.v * R);   // wrap-local coordinates
     }
-    // generous drop zone: well past the face's edge, so hats, ears and beards are easy to place
-    const onFace = (x, y) => Math.hypot(x - cx, y - cy) < R * 1.55;
+    // drop zone: a little past the face's edge, so hats, ears and beards are easy to place
+    const onFace = (x, y) => Math.hypot(x - cx, y - cy) < R * 1.3;
 
     function poof(el) {
       el.classList.add('poof');
