@@ -58,6 +58,7 @@ function openGame(g) {
   stage.removeAttribute('style');
   // colour iOS uses for any area outside the layout (see css/app.css)
   document.documentElement.style.setProperty('--edge', g.edge || '#ffffff');
+  setThemeColor(g.edge || '#ffffff');
   document.body.classList.add('in-game');
   stopGame = g.start(stage, kit) || null;
 }
@@ -70,8 +71,14 @@ function goHome() {
   kit.clearConfetti();
   $('#stage').innerHTML = '';
   document.documentElement.style.removeProperty('--edge');
+  setThemeColor('#ffdbe7');
   document.body.classList.remove('in-game');
   if (reloadWhenHome) location.reload();
+}
+
+// iOS may paint areas outside the web page itself with the theme colour, so keep it matching too.
+function setThemeColor(c) {
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', c);
 }
 
 /* ---------- iOS 26 standalone bottom gap ---------- */
@@ -83,7 +90,10 @@ function fixViewportGap() {
   const sw = land ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
   const sh = land ? Math.min(screen.width, screen.height) : Math.max(screen.width, screen.height);
   let gap = 0;
-  if (standalone && Math.abs(innerWidth - sw) <= 2) gap = Math.max(0, Math.min(120, sh - innerHeight));
+  // Always overdraw a little in Home Screen mode, even when no gap is measured: the bottom 24px
+  // of the layout may fall off-screen, which costs nothing visible since games keep clear of the edge.
+  const OVERDRAW = 24;
+  if (standalone && Math.abs(innerWidth - sw) <= 2) gap = Math.min(160, Math.max(OVERDRAW, sh - innerHeight + OVERDRAW));
   document.documentElement.style.setProperty('--vp-gap', gap + 'px');
   $('#dims').textContent = `Skærm ${sw}×${sh} · vindue ${innerWidth}×${innerHeight} · udfyldt ${gap}px`;
 }
