@@ -40,7 +40,7 @@ button { font: inherit; color: inherit; touch-action: manipulation; }
   transition: transform .12s;
 }
 .tile:active { transform: scale(.93) translateY(.6vmin); }
-.tile .icon { font-size: 44cqw; line-height: 1; }
+.tile .icon { font-size: 40cqw; line-height: 1; }
 .tile .name { font-size: 11.5cqw; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,.18); white-space: nowrap; }
 #info { text-align: center; }
 #info p { font-size: max(11px, 1.6vmin); opacity: .55; margin: .4em auto; max-width: 80ch; padding: 0 2em; }

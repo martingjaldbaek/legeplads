@@ -16,10 +16,25 @@ import tryllemaling from '../games/tryllemaling.js';
 import dyrpuslespil from '../games/dyrpuslespil.js';
 import blandeansigt from '../games/blandeansigt.js';
 import blandefigur from '../games/blandefigur.js';
+import koekken from '../games/koekken.js';
+import madpakke from '../games/madpakke.js';
+import butik from '../games/butik.js';
+import dukkehus from '../games/dukkehus.js';
+import klaedpaa from '../games/klaedpaa.js';
+import tandboerste from '../games/tandboerste.js';
+import bilvask from '../games/bilvask.js';
+import taarn from '../games/taarn.js';
+import byggeplads from '../games/byggeplads.js';
+import tog from '../games/tog.js';
+import have from '../games/have.js';
+import akvarie from '../games/akvarie.js';
+import snekugle from '../games/snekugle.js';
+import lydzoo from '../games/lydzoo.js';
 
 // To add a game: create games/<name>.js (see README) and add it here.
 const GAMES = [bobler, former, xylofon, maling, tryllemaling, boh, bondegaard, badetid,
-  farver, ansigt, blandeansigt, blandefigur, dyrpuslespil, ballon, instrumenter, musik];
+  farver, ansigt, blandeansigt, blandefigur, dyrpuslespil, ballon, instrumenter, musik,
+  koekken, madpakke, butik, dukkehus, klaedpaa, tandboerste, bilvask, taarn, byggeplads, tog, have, akvarie, snekugle, lydzoo];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;
@@ -50,6 +65,7 @@ function renderHome() {
   $('#hint').innerHTML = (standalone ? '' :
     'Til voksne: tryk <b>Del</b> → <b>Føj til hjemmeskærm</b> for at bruge Legeplads som app – også uden net.<br>') +
     'Lås iPad\'en til Legeplads med <b>Guidet adgang</b> (tryk tre gange på topknappen).';
+  layoutTiles();
 }
 
 function openGame(g) {
@@ -76,6 +92,7 @@ function goHome() {
   document.documentElement.style.removeProperty('--edge');
   setThemeColor('#ffdbe7');
   document.body.classList.remove('in-game');
+  layoutTiles();
   if (reloadWhenHome) location.reload();
 }
 
@@ -83,6 +100,24 @@ function goHome() {
 function setThemeColor(c) {
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', c);
 }
+
+/* ---------- tile grid: pick the column count that gives the biggest tiles that all fit ---------- */
+function layoutTiles() {
+  const tiles = $('#tiles'), n = GAMES.length;
+  const W = innerWidth, H = innerHeight, vmin = Math.min(W, H) / 100;
+  const gap = 2.2 * vmin;
+  const other = $('#home h1').offsetHeight + $('#info').offsetHeight + 2 * 3.5 * vmin + 40;
+  const availW = W * 0.94, availH = H - other;
+  let best = { tile: 0, cols: 6 };
+  for (let cols = 3; cols <= 12; cols++) {
+    const rows = Math.ceil(n / cols);
+    const tile = Math.min((availW - gap * (cols - 1)) / cols, (availH - gap * (rows - 1)) / rows, 210);
+    if (tile > best.tile) best = { tile, cols };
+  }
+  tiles.style.setProperty('--tile', Math.floor(best.tile) + 'px');
+  tiles.style.gridTemplateColumns = `repeat(${best.cols}, var(--tile))`;
+}
+addEventListener('resize', () => { layoutTiles(); setTimeout(layoutTiles, 400); });
 
 /* ---------- iOS 26 standalone bottom gap ---------- */
 // See css/app.css. Only in Home Screen mode, only when we fill the whole screen width (not split view),

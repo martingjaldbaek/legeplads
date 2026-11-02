@@ -20,6 +20,20 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 - **Instrumenter** 🥁: SVG characters (in `games/art/instrumenter-art.js`): a drum whose sticks strike, a swinging bell, maracas and a trumpet (hold to blow), plus a rainbow harp to strum.
 - **Musikmaskine** 🎛️: pick one of eight songs (Solskin, Dino-dans, Godnat, Rumrejse, Regnvejr, Havet, Rock, Cirkus), then light up tiles. A playhead loops across them: the top rows are melody notes in the song's key, the bottom rows are drums, and a soft backing track plays underneath. Drag across tiles to paint them. 🧽 clears the grid and 🎵 goes back to the song list.
 - **Ballon** 🎈: hold a finger down to blow up a balloon, with a rising sound. Let go and it floats away; hold too long and it pops with confetti. Tap a flying balloon to pop it.
+- **Køkkenet** 🍳: three stations. Soup (drop ingredients in, stir in circles), pizza (toppings, into the oven, ding, eat it bite by bite) and cake (decorate, light candles, tap the flames to blow them out).
+- **Madpakken** 🥪: fill the lunch box compartments, put the lid on, put it in the backpack and zip it up.
+- **Butik** 🛒: take items off the shelves, scan them at the till with a beep, pay with big coins, and the bag flies home.
+- **Dukkehuset** 🏠: a dollhouse cross-section with seven characters to drag about. Almost everything reacts: lamps, toilet, bath, fridge, oven, TV, radio, doorbell (visitors), day and night.
+- **Klæd på** 🧥: dress a child for the weather in the window (sun, rain, snow, wind) from 21 clothes. When dressed for it, the child goes out to play.
+- **Tandbørstning** 🪥: toothpaste, brush away food and bacteria, rinse with a cup, and five animals get sparkling teeth.
+- **Bilvask** 🚗: wash a muddy car, lorry, bus or tractor (sponge, hose, towel), change flat tyres, fill up with petrol, honk goodbye.
+- **Tårnet** 🧱: stack blocks with real wobbly physics; 🚜 bulldozes the tower and 🧹 clears up.
+- **Byggeplads** 🏗️: a digger loads sand into a truck, a crane builds a house floor by floor, and a cement mixer pours cement for hand prints.
+- **Togbanen** 🚂: fill the gaps in the track, couple on wagons, let animals board, and tap the train for a lap round to the station.
+- **Haven** 🌻: plant seeds, water them and tap the sun so they grow. Bees arrive, and you harvest into the basket.
+- **Akvariet** 🐠: build fish from body, tail, colour, pattern and eyes, then drop them in the tank. Tap the water to feed them; crabs, octopus, turtle and whale join as friends.
+- **Snekugle** ⛄: put figures into a snow globe and swipe to shake it. Themes are snow, glitter, hearts, stars and bubbles, and tapping the base winds a music box.
+- **Lyd-zoo** 🦁: a long street to swipe along, past farm, pond, town, station, beach and zoo, with 41 things that make sounds when tapped.
 
 ## On the iPad
 1. Open the site in **Safari**, then tap **Share → Add to Home Screen**.
