@@ -336,7 +336,13 @@ export default {
       const body = makeBody(-2, groundY - 0.75, 1.3, 0.75, false);
       body.kin = true;
       dozer = { body, dir: 1, speed: 5.5, turnAt: WU * 0.72, hitSaid: false };
-      dozer.sound = kit.sustain({ type: 'sawtooth', freq: 55, vol: 0.05 });
+      // engine: soft short pulses, not a held low sawtooth (that buzzed on the iPad speaker)
+      let n = 0;
+      dozer.sound = t.every(() => {
+        const f = 140 + 30 * Math.sin(n++ / 3);
+        kit.tone(f, { dur: 0.09, vol: 0.12, slide: f * 0.8, attack: 0.015 });
+        kit.tone(f * 2, { dur: 0.06, vol: 0.04, attack: 0.015 });
+      }, 120);
       dozerBtn.classList.add('go');
       kit.say('Brum brum!', { pitch: 1.1 });
       record = 0;
@@ -344,7 +350,7 @@ export default {
     }
     function stopDozer() {
       if (!dozer) return;
-      dozer.sound.stop(0.3);
+      clearInterval(dozer.sound);
       dozer = null;
       dozerBtn.classList.remove('go');
     }
@@ -650,7 +656,7 @@ export default {
       removeEventListener('pointercancel', release);
       t.clear();
       offResize();
-      if (dozer) dozer.sound.stop(0.05);
+      if (dozer) clearInterval(dozer.sound);
     };
   },
 };

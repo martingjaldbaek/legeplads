@@ -407,7 +407,7 @@ export default {
       const stream = svgEl('path', { fill: 'none', stroke: '#8d8d9e', 'stroke-width': 26, 'stroke-linecap': 'round', opacity: 0 }, svg);
       const MX0 = 160, MX1 = 600, MY = 852, MH = 54;
       let fill = 0, wet = false, prints = 0, speed = 0, stripeX = 0, pouring = false, glugT = 0, drying = false, mouldX = 0, sliding = 0;
-      let rumble = null;
+      let rumbleT = 0;
 
       function drawMould() {
         mould.innerHTML = `
@@ -434,8 +434,16 @@ export default {
         if (speed < 0.05) speed = 0;
         stripeX = (stripeX + speed * dt * 60) % 160;
         stripes.setAttribute('transform', `translate(${stripeX} 0)`);
-        if (speed > 0.2 && !rumble) rumble = kit.sustain({ type: 'sawtooth', freq: 45, vol: 0.04 });
-        if (rumble) { rumble.set(40 + speed * 8); if (speed <= 0.2) { rumble.stop(0.3); rumble = null; } }
+        // drum rumble: soft short pulses, faster when it spins faster (a held low sawtooth buzzed on the iPad)
+        if (speed > 0.2) {
+          rumbleT -= dt;
+          if (rumbleT <= 0) {
+            rumbleT = Math.max(0.09, 0.2 - speed * 0.015);
+            const f = 120 + speed * 6;
+            kit.tone(f, { dur: 0.09, vol: 0.1, slide: f * 0.8, attack: 0.015 });
+            kit.tone(f * 2, { dur: 0.06, vol: 0.03, attack: 0.015 });
+          }
+        } else rumbleT = 0;
 
         const pourNow = pouring && fill < 1 && !wet && !sliding;
         if (pourNow) {
@@ -500,7 +508,7 @@ export default {
         },
         move() {},
         up() { pouring = false; },
-        stop() { if (rumble) rumble.stop(0.05); rumble = null; },
+        stop() {},
       };
     }
 

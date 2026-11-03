@@ -98,6 +98,10 @@ Then import it in `js/app.js`, add it to `GAMES`, and add a line to README.md.
 - **Held sounds** (`kit.sustain`): give every instance its own handle and stop exactly that one. Never share
   one variable across overlapping uses; that leaked a forever-buzzing engine in Bilvask. Stop them all in `stop()`,
   and give long-running ones a safety timeout.
+- **Engines and rumbles:** don't use a held low sawtooth or square (below ~100 Hz). The iPad speaker can't play
+  the fundamental, so it comes out as a raspy buzz. Use short rounded pulses (`tone` every ~110 ms around
+  120–180 Hz) instead; they also can't leak. Likewise, don't fire noise bursts back-to-back (scrub, spray):
+  space them out, or they merge into a buzz.
 - **SVG input:** don't rely on `getScreenCTM()`. Compute the scene↔screen mapping from your own viewBox, and take
   pointer events on the game's root div rather than on SVG children.
 - **SVG:**
