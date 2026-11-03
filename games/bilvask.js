@@ -197,21 +197,18 @@ export default {
     const onCar = p => p.x > -30 && p.x < 530 && p.y > -30 && p.y < 300;
 
     // ---------- sounds ----------
-    // Each engine hum has its own handle. (There used to be one shared variable: the next vehicle's engine
-    // started 100 ms before the leaving one's was stopped, so the old handle was overwritten and its
-    // sawtooth buzzed forever.) Every hum also stops itself after a few seconds as a safety net.
-    const engines = new Set();
-    function engineOn() {
-      const e = kit.sustain({ type: 'sawtooth', freq: 55, vol: 0.05 });
-      e.set(85, 0.4);
-      engines.add(e);
-      setTimeout(() => engineOff(e), 4000);
-      return e;
-    }
-    function engineOff(e) {
-      if (!e || !engines.has(e)) return;
-      engines.delete(e);
-      e.set(45, 0.2); e.stop(0.4);
+    // The engine is a soft "brum-brum" of short rounded pulses, not a held note. A held low sawtooth sounded
+    // like a raspy buzz on the iPad speaker (and once leaked and buzzed forever). Pulses can't leak: each one
+    // ends by itself, and the pulse timer is in the game's timer set.
+    function engine(ms) {
+      let n = 0;
+      const steps = Math.round(ms / 110);
+      const id = t.every(() => {
+        const f = 150 + 40 * Math.sin(n / 3);
+        kit.tone(f, { dur: 0.09, vol: 0.12, slide: f * 0.8, attack: 0.015 });
+        kit.tone(f * 2, { dur: 0.06, vol: 0.04, attack: 0.015 });
+        if (++n >= steps) clearInterval(id);
+      }, 110);
     }
     function honk() {
       const f = V[6];
@@ -274,9 +271,8 @@ export default {
       void car.offsetWidth;
       car.classList.add('drive', 'driving');
       placeCar();
-      const hum = engineOn();
+      engine(1500);
       t.later(() => {
-        engineOff(hum);
         car.classList.remove('driving');
         kit.replay(car.firstChild, 'bounce');
         kit.sfx.splat();
@@ -346,7 +342,8 @@ export default {
       last = p;
       if (!onCar(p) || d < 0.5) return;
       const now = performance.now();
-      if (now - lastSound > 80) { lastSound = now; kit.noise({ dur: 0.08, vol: 0.1, freq: kit.rand(1500, 2600), q: 0.8 }); if (Math.random() < 0.3) kit.sfx.squeak(); }
+      // soapy bubbles: separate little rising blips (back-to-back noise bursts merged into a buzz)
+      if (now - lastSound > 140) { lastSound = now; const f = kit.rand(600, 1000); kit.tone(f, { dur: 0.07, vol: 0.07, slide: f * 1.5 }); if (Math.random() < 0.25) kit.sfx.squeak(); }
       if (Math.random() < Math.min(1, d / 16)) addFoam(p);
       mud.forEach(m => {
         if (m.life <= 0 || Math.hypot(p.x - m.x, p.y - m.y) > 75) return;
@@ -383,7 +380,12 @@ export default {
         root.appendChild(d);
         setTimeout(() => d.remove(), 520);
       }
-      if (performance.now() - spraySound > 120) { spraySound = performance.now(); kit.noise({ dur: 0.16, vol: 0.1, freq: kit.rand(3000, 5000), q: 0.6 }); }
+      // splashy water: soft, spaced swishes and plinks (back-to-back bright noise sounded like a buzz)
+      if (performance.now() - spraySound > 260) {
+        spraySound = performance.now();
+        kit.noise({ dur: 0.22, vol: 0.05, freq: kit.rand(1200, 1800), q: 0.4, sweep: 700 });
+        const f = kit.rand(900, 1400); kit.tone(f, { at: 0.05, dur: 0.08, vol: 0.05, slide: f * 0.6 });
+      }
       const p = svgPt(x - Math.min(W, H) * 0.06, y + Math.min(W, H) * 0.03);
       if (!onCar(p)) return;
       foam.forEach(f => {
@@ -499,7 +501,7 @@ export default {
         n++;
         fuel = Math.min(1, n / 14);
         gauge.setAttribute('width', 68 * fuel);
-        kit.tone(n % 2 ? 140 : 180, { dur: 0.14, type: 'triangle', vol: 0.15, slide: 90 });   // glug
+        kit.tone(n % 2 ? 330 : 420, { dur: 0.13, vol: 0.14, slide: 200, attack: 0.015 });   // glug
         if (n % 3 === 0) kit.replay(car.firstChild, 'bounce');
         if (fuel >= 1) {
           clearInterval(id);
@@ -527,8 +529,8 @@ export default {
         const old = car;
         old.classList.add('away', 'driving');
         old.style.transform = `translate(${W + 40}px, ${carY}px)`;
-        const hum = engineOn();
-        t.later(() => { engineOff(hum); old.remove(); }, 1400);
+        engine(1300);
+        t.later(() => old.remove(), 1400);
         t.later(nextVehicle, 1300);
       }, 1800);
     }
@@ -538,7 +540,7 @@ export default {
     t.later(nextVehicle, 200);
     return () => {
       alive = false;
-      t.clear(); offResize(); [...engines].forEach(e => engineOff(e));
+      t.clear(); offResize();
       root.removeEventListener('pointerdown', down);
       root.removeEventListener('pointermove', move);
       root.removeEventListener('pointerup', up);
