@@ -24,7 +24,7 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 - **Madpakken** 🥪: fill the lunch box compartments, put the lid on, put it in the backpack and zip it up.
 - **Butik** 🛒: take items off the shelves, scan them at the till with a beep, pay with big coins, and the bag flies home.
 - **Dukkehuset** 🏠: a dollhouse cross-section with seven characters to drag about. Almost everything reacts: lamps, toilet, bath, fridge, oven, TV, radio, doorbell (visitors), day and night.
-- **Klæd på** 🧥: dress a child for the weather in the window (sun, rain, snow, wind) from 21 clothes. When dressed for it, the child goes out to play.
+- **Klæd på** 🧥: dress a child for the weather in the window (sun, rain, snow, wind) from 24 clothes and toys. Each hand can hold something (ice cream, umbrella, kite, balloon, teddy, snowball). When dressed for it, the child goes out to play.
 - **Tandbørstning** 🪥: toothpaste, brush away food and bacteria, rinse with a cup, and five animals get sparkling teeth.
 - **Bilvask** 🚗: wash a muddy car, lorry, bus or tractor (sponge, hose, towel), change flat tyres, fill up with petrol, honk goodbye.
 - **Tårnet** 🧱: stack blocks with real wobbly physics; 🚜 bulldozes the tower and 🧹 clears up.

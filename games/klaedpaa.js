@@ -1,11 +1,12 @@
-import { CHAR, CHAR_VIEWBOX, ITEMS, WARDROBE, SLOTS, weatherSVG, WEATHER_CSS } from './art/klaedpaa-art.js';
+import { CHAR, CHAR_VIEWBOX, ITEMS, WARDROBE, SLOTS, HANDS, weatherSVG, WEATHER_CSS } from './art/klaedpaa-art.js';
 
 /* Klæd på: dress a child for the weather in the window. Drag clothes from the wardrobe onto the child; each
  * snaps to its body slot (a new hat replaces the old one) and is named. Weather-right clothes make the child
  * happy; winter clothes in the sun make it sweat and summer clothes in the snow make it shiver – a gentle joke,
  * never a "wrong". Four weather-right things and the child says "Nu er jeg klar!", the window opens up to the
  * whole screen and the child plays outside, then comes back in for a new weather. Tap the window to change the
- * weather. Drag a piece of clothing off the child to take it off.
+ * weather. Drag a piece of clothing off the child to take it off. Both hands can hold something (an ice cream
+ * in one, an umbrella in the other): a held item goes to the hand it's dropped nearest, or the free one.
  */
 const WEATHERS = ['sol', 'regn', 'sne', 'blæst'];
 const WNAME = { sol: 'Solskin!', regn: 'Regnvejr!', sne: 'Sne!', 'blæst': 'Blæsevejr!' };
@@ -94,7 +95,14 @@ export default {
       tileBox[id] = ITEMS[id].icon ? measure(ITEMS[id].icon) : box[id];
     }
     meas.remove();
-    const icon = id => { const b = box[id]; return `<svg viewBox="${b.x} ${b.y} ${b.w} ${b.h}">${ITEMS[id].svg}</svg>`; };
+    // held items are drawn in the right hand; the left hand gets a mirror image (around the child's centre x=150).
+    // view-box: the .kp-char * fill-box rule would otherwise move the mirror's origin.
+    const MIRROR = svg => `<g transform="translate(300 0) scale(-1 1)" style="transform-box:view-box">${svg}</g>`;
+    const slotSVG = (slot, id) => slot === 'heldL' ? MIRROR(ITEMS[id].svg) : ITEMS[id].svg;
+    const icon = (id, mirror) => {
+      const b = box[id], x = mirror ? 300 - b.x - b.w : b.x;
+      return `<svg viewBox="${x} ${b.y} ${b.w} ${b.h}">${mirror ? MIRROR(ITEMS[id].svg) : ITEMS[id].svg}</svg>`;
+    };
     const tileIcon = id => { const b = tileBox[id]; return `<svg viewBox="${b.x} ${b.y} ${b.w} ${b.h}">${ITEMS[id].icon || ITEMS[id].svg}</svg>`; };
 
     let weather = 'sol', busy = false, unit = 1;   // unit: screen px per character unit
@@ -108,10 +116,10 @@ export default {
     }
 
     // ---- dragging: a floating copy drawn at the child's scale ----
-    function floatFor(id, x, y) {
+    function floatFor(id, x, y, mirror = false) {
       const f = document.createElement('div');
       f.className = 'kp-float';
-      f.innerHTML = icon(id);
+      f.innerHTML = icon(id, mirror);
       const b = box[id];
       f.style.width = b.w * unit + 'px'; f.style.height = b.h * unit + 'px';
       root.appendChild(f);
@@ -162,7 +170,7 @@ export default {
           if (!d) return;
           drags.delete(tile);
           // no dressing once the child is getting ready to go out
-          if (!busy && overChild(e.clientX, e.clientY)) { d.f.remove(); wear(id); } else poof(d.f);
+          if (!busy && overChild(e.clientX, e.clientY)) { d.f.remove(); wear(id, e.clientX); } else poof(d.f);
         },
       });
     });
@@ -174,7 +182,7 @@ export default {
       const h = kit.draggable(g, {
         start(e) {
           if (busy || !worn[slot]) return false;
-          drags.set(g, { pid: e.pointerId, f: floatFor(worn[slot], e.clientX, e.clientY), g, h });
+          drags.set(g, { pid: e.pointerId, f: floatFor(worn[slot], e.clientX, e.clientY, slot === 'heldL'), g, h });
           g.style.opacity = '0';   // not visibility:hidden – a hidden slot can't be touched, so a stale drag couldn't be undone
           kit.sfx.pickUp();
         },
@@ -184,16 +192,41 @@ export default {
           if (!d) return;
           drags.delete(g);
           g.style.opacity = '';
-          if (busy || overChild(e.clientX, e.clientY)) { d.f.remove(); kit.sfx.plop(); kit.replay(g, 'kp-on'); }
+          if (!busy && HANDS.includes(slot) && overChild(e.clientX, e.clientY) && nearHand(e.clientX) !== slot) {
+            // dragged across to the other hand: move it there (swapping if that hand holds something)
+            const other = nearHand(e.clientX), mine = worn[slot], theirs = worn[other];
+            d.f.remove();
+            hold(other, mine);
+            if (theirs) hold(slot, theirs); else { worn[slot] = null; g.innerHTML = ''; }
+            kit.sfx.plop();
+          } else if (busy || overChild(e.clientX, e.clientY)) { d.f.remove(); kit.sfx.plop(); kit.replay(g, 'kp-on'); }
           else { worn[slot] = null; g.innerHTML = ''; poof(d.f); }
         },
       });
     });
 
-    function wear(id) {
-      const it = ITEMS[id], g = slotEl[it.slot];
-      worn[it.slot] = id;
-      g.innerHTML = it.svg;
+    // which hand is nearer a screen x (the child faces us: the left-hand slot is on the screen's left)
+    function nearHand(x) {
+      const r = charEl.getBoundingClientRect();
+      return (x - r.left) / r.width * 390 - 30 < 150 ? 'heldL' : 'heldR';
+    }
+    function hold(slot, id) {
+      worn[slot] = id;
+      slotEl[slot].innerHTML = slotSVG(slot, id);
+      kit.replay(slotEl[slot], 'kp-on');
+    }
+
+    function wear(id, x) {
+      const it = ITEMS[id];
+      let slot = it.slot;
+      if (slot === 'held') {
+        slot = nearHand(x);
+        const other = slot === 'heldL' ? 'heldR' : 'heldL';
+        if (worn[slot] && !worn[other]) slot = other;
+      }
+      const g = slotEl[slot];
+      worn[slot] = id;
+      g.innerHTML = slotSVG(slot, id);
       kit.replay(g, 'kp-on');
       kit.sfx.plop();
       const r = charEl.getBoundingClientRect();
@@ -285,7 +318,7 @@ export default {
       const W = root.clientWidth, H = root.clientHeight, portrait = H > W, gap = 8, pad = 12, n = WARDROBE.length;
       let cols, cell;
       if (portrait) {
-        cols = 7;
+        cols = Math.ceil(n / 3);
         cell = Math.min((W * 0.94 - 2 * pad - (cols - 1) * gap) / cols, H * 0.085);
       } else {
         cols = 4;

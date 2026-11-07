@@ -14,7 +14,9 @@ const ARM_L = 'M110 190 Q82 250 72 318', ARM_R = 'M190 190 Q218 250 228 318';
 const sleeves = (col, w = 34) => limb(ARM_L, col, w) + limb(ARM_R, col, w);
 
 // Slots are drawn in this order (later = on top). The body parts are interleaved in CHAR below.
-export const SLOTS = ['legs', 'feet', 'torso', 'neck', 'eyes', 'head', 'held', 'hands'];
+// Items with slot 'held' are drawn in the right hand (230,330); the game mirrors them for the left hand.
+export const SLOTS = ['legs', 'feet', 'torso', 'neck', 'eyes', 'head', 'heldL', 'heldR', 'hands'];
+export const HANDS = ['heldL', 'heldR'];
 
 export const CHAR = `
 <g class="kp-figure">
@@ -45,7 +47,8 @@ export const CHAR = `
   <g class="kp-slot" data-slot="neck"></g>
   <g class="kp-slot" data-slot="eyes"></g>
   <g class="kp-slot" data-slot="head"></g>
-  <g class="kp-slot" data-slot="held"></g>
+  <g class="kp-slot" data-slot="heldL"></g>
+  <g class="kp-slot" data-slot="heldR"></g>
   <g class="kp-slot" data-slot="hands"></g>
 </g>`;
 
@@ -143,6 +146,25 @@ export const ITEMS = {
     <path d="M220 316 L240 316 M224 330 L236 330" stroke="#b9824c" stroke-width="3"/>
     <circle cx="230" cy="290" r="19" fill="#ffafcc" ${ink(4)}/><circle cx="230" cy="262" r="15" fill="#fff5e0" ${ink(4)}/>
     <circle cx="232" cy="248" r="6" fill="#e63946" ${ink(3)}/>` },
+  ballon: { slot: 'held', name: 'Ballon', w: ['sol', 'blæst'], svg: `
+    <path d="M230 326 Q244 200 236 120 Q228 70 262 48" fill="none" ${ink(2.5)}/>
+    <g class="kp-balloon"><ellipse cx="262" cy="-4" rx="44" ry="52" fill="#ff4d6d" ${ink(5)}/>
+      <path d="M254 48 L270 48 L262 60 Z" fill="#ff4d6d" ${ink(3)}/>
+      <ellipse cx="246" cy="-22" rx="10" ry="16" fill="#fff" opacity=".55"/></g>` },
+  bamse: { slot: 'held', name: 'Bamse', w: ['sol', 'regn', 'sne', 'blæst'], svg: `
+    <circle cx="216" cy="250" r="11" fill="#c98a4b" ${ink(4)}/><circle cx="260" cy="250" r="11" fill="#c98a4b" ${ink(4)}/>
+    <ellipse cx="238" cy="318" rx="30" ry="34" fill="#c98a4b" ${ink(5)}/>
+    <ellipse cx="238" cy="324" rx="16" ry="18" fill="#f2c79a"/>
+    <circle cx="238" cy="270" r="26" fill="#c98a4b" ${ink(5)}/>
+    <ellipse cx="238" cy="280" rx="11" ry="8" fill="#f2c79a"/>
+    <circle cx="229" cy="265" r="3.5" fill="${INK}"/><circle cx="247" cy="265" r="3.5" fill="${INK}"/>
+    <ellipse cx="238" cy="277" rx="4" ry="3" fill="${INK}"/>
+    <path d="M232 284 Q238 289 244 284" fill="none" ${ink(2.5)}/>
+    <path d="M220 296 L238 304 L256 296 L252 310 L238 306 L224 310 Z" fill="#ff4d6d" ${ink(3)}/>` },
+  snebold: { slot: 'held', name: 'Snebold', w: ['sne'], svg: `
+    <circle cx="232" cy="306" r="26" fill="#fff" ${ink(5)}/>
+    <path d="M214 318 Q232 334 250 316" fill="none" stroke="#c4d3e6" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="224" cy="296" r="4" fill="#e8f0fb"/><circle cx="242" cy="300" r="3" fill="#e8f0fb"/>` },
 };
 // tighter pictures for the wardrobe tiles where the worn item is mostly empty space
 const MITT = c => `<path d="M52 316 Q52 300 70 300 Q88 300 88 318 V346 Q70 360 52 346 Z" fill="${c}" ${ink(4)}/>
@@ -150,11 +172,12 @@ const MITT = c => `<path d="M52 316 Q52 300 70 300 Q88 300 88 318 V346 Q70 360 5
 ITEMS.vanter.icon = MITT('#2ec4b6') + `<g transform="translate(150 0) scale(-1 1) translate(-150 0) translate(108 0)">${MITT('#2ec4b6')}</g>`;
 ITEMS.paraply.icon = ITEMS.paraply.svg.replace('M230 340 V-14', 'M230 60 V-14').replace('M230 340 Q230 362 248 360', 'M230 60 Q230 82 248 80');
 ITEMS.drage.icon = ITEMS.drage.svg.replace(/<path class="kp-kite-string"[^>]*\/>/, '');
+ITEMS.ballon.icon = ITEMS.ballon.svg.replace('M230 326 Q244 200 236 120 Q228 70 262 48', 'M262 60 Q252 90 266 120');
 
 // order in the wardrobe: grouped by weather so the tray reads as sun / rain / snow / wind
 export const WARDROBE = ['solhat', 'kasket', 'solbriller', 'tshirt', 'shorts', 'badebukser', 'sandaler', 'is',
   'sydvest', 'regnfrakke', 'gummistovler', 'paraply', 'hue', 'halstorklaede', 'vanter', 'vinterjakke',
-  'snebukser', 'vinterstovler', 'jakke', 'bukser', 'drage'];
+  'snebukser', 'vinterstovler', 'snebold', 'jakke', 'bukser', 'drage', 'ballon', 'bamse'];
 
 /* The weather outside the window: viewBox 0 0 400 300, drawn with slice so it can grow to fill the screen. */
 const rnd = (a, b) => a + Math.random() * (b - a);
