@@ -54,6 +54,17 @@ const CSS = `
 .dyr-piece.lift svg { filter: drop-shadow(0 2vmin 1.4vmin rgba(0,0,0,.25)); }
 .dyr-piece.pop { animation: dyr-pop .4s ease backwards; }
 @keyframes dyr-pop { from { opacity:0; scale:.2 } 70% { scale:1.1 } to { opacity:1; scale:1 } }
+
+/* animal picker along the top */
+.dyr-pick { position:absolute; top:12px; left:104px; right:12px; display:flex; justify-content:center; gap:8px; }
+.dyr-pick button { flex:1 1 0; max-width:104px; aspect-ratio:4/3; padding:4px; border:0; border-radius:16px;
+  background:rgba(255,255,255,.7); box-shadow:0 3px 0 rgba(0,0,0,.08); touch-action:none; transition: transform .15s; }
+.dyr-pick button.on { background:#fff; box-shadow:0 0 0 4px #ffd23f, 0 3px 0 rgba(0,0,0,.08); transform: scale(1.08); }
+.dyr-pick button.tap { animation: dyr-boing .35s ease; }
+.dyr-pick svg { width:100%; height:100%; display:block; overflow:visible; pointer-events:none; }
+.dyr-pick .m-open { display:none; }
+.dyr-leave { transition: transform .7s ease-in, opacity .7s ease-in !important; opacity:0; }
+.dyr-piece.gone { transition: transform .35s ease-in, opacity .35s; opacity:0; pointer-events:none; }
 `;
 
 export default {
@@ -71,6 +82,44 @@ export default {
     const order = kit.shuffle(ANIMALS.slice());
     let idx = 0, cur = null, z = 20;
     let W = 0, H = 0, s = 1, ax = 0, ay = 0, aw = 0, ah = 0;   // animal box on screen (px)
+
+    /* ---------- picker: a button per animal, tap to build that one now ---------- */
+    const pick = document.createElement('div');
+    pick.className = 'dyr-pick';
+    root.appendChild(pick);
+    const btns = ANIMALS.map(a => {
+      const b = document.createElement('button');
+      const back = a.parts.filter(p => p.layer !== 'front').map(p => p.svg).join('');
+      const front = a.parts.filter(p => p.layer === 'front').map(p => p.svg).join('');
+      b.innerHTML = `<svg viewBox="20 10 360 280">${back}${a.body}${front}</svg>`;
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        kit.replay(b, 'tap');
+        choose(a);
+      });
+      pick.appendChild(b);
+      return { a, b };
+    });
+    const markPicked = a => btns.forEach(x => x.b.classList.toggle('on', x.a === a));
+    const pickBottom = () => pick.getBoundingClientRect().bottom - root.getBoundingClientRect().top;
+
+    function choose(a) {
+      if (cur && cur.a === a && !cur.done) { kit.sfx.boing(); kit.say(a.name, { pitch: 1.25 }); return; }
+      kit.sfx.fwip();
+      kit.say(a.name, { pitch: 1.25 });
+      const old = cur;
+      cur = null;
+      if (old) {
+        // the unfinished animal scoots off to the right, its loose parts poof
+        old.pieces.forEach(pc => { if (pc.el.isConnected) { pc.el.classList.add('gone'); setTimeout(() => pc.el.remove(), 400); } });
+        old.wrap.style.transition = '';
+        old.wrap.classList.add('walk', 'dyr-leave');
+        old.wrap.style.transform = `translateX(${W - ax + 30}px)`;
+        setTimeout(() => old.wrap.remove(), 750);
+      }
+      next(a);
+    }
 
     /* ---------- building an animal ---------- */
     function build(a) {
@@ -130,6 +179,7 @@ export default {
       s = aw / 400; ah = 300 * s;
       ax = (W - aw) / 2;
       ay = portrait ? H * 0.5 - ah / 2 : H * 0.54 - ah / 2;
+      ay = Math.max(ay, pickBottom() + 20);
       if (cur) {
         Object.assign(cur.wrap.style, { width: aw + 'px', height: ah + 'px', left: ax + 'px', top: ay + 'px' });
         layoutPieces(cur);
@@ -140,7 +190,7 @@ export default {
     function layoutPieces(c) {
       const loose = c.pieces.filter(pc => !pc.placed);
       if (!loose.length) return;
-      const portrait = H > W, top = 96, gapX = 16;
+      const portrait = H > W, top = pickBottom() + 10, gapX = 16;
       const zoneA = [], zoneB = [];
       loose.forEach((pc, i) => (i % 2 ? zoneB : zoneA).push(pc));
       const place = (list, zx, zy, zw, zh, horizontal) => {
@@ -158,8 +208,8 @@ export default {
         place(zoneA, gapX, top, W - 2 * gapX, ay - top, true);
         place(zoneB, gapX, ay + ah, W - 2 * gapX, H - ay - ah - 12, true);
       } else {
-        place(zoneA, gapX, top * 0.6, ax - gapX, H - top * 0.6 - 12, false);
-        place(zoneB, ax + aw, top * 0.6, W - ax - aw - gapX, H - top * 0.6 - 12, false);
+        place(zoneA, gapX, top, ax - gapX, H - top - 12, false);
+        place(zoneB, ax + aw, top, W - ax - aw - gapX, H - top - 12, false);
       }
     }
 
@@ -190,6 +240,7 @@ export default {
         move(e) { setPiece(pc, e.clientX + dx, e.clientY + dy, s, 0); },
         end() {
           pc.el.classList.remove('lift');
+          if (cur !== c) return;   // another animal was picked mid-drag
           drop(c, pc, pc.x, pc.y);
         },
       });
@@ -223,6 +274,7 @@ export default {
       setPiece(pc, q.x, q.y, s, 0);
       t.later(() => {
         pc.el.remove();
+        if (cur !== c) return;
         sl.ghost.remove();
         sl.filled = true;
         const gEl = document.createElementNS(NS, 'g');
@@ -240,6 +292,7 @@ export default {
 
     /* ---------- complete: come alive, leave, next animal ---------- */
     function alive(c) {
+      if (cur !== c) return;
       c.done = true;
       c.wrap.classList.add('alive', 'talk');
       kit.sfx.fanfare();
@@ -247,17 +300,22 @@ export default {
       kit.burst(ax + aw / 2, ay + ah / 2, 90, 1.1);
       t.later(() => c.wrap.classList.remove('talk'), 1800);
       t.later(() => {
+        if (cur !== c) return;
         c.wrap.classList.add('walk');
         c.wrap.style.transition = 'transform 3.2s ease-in';
         c.wrap.style.transform = `translate(${W - ax + 30}px, ${c.a.fly ? -ay - ah : 0}px)`;
         kit.sfx.whoosh();
       }, 2400);
-      t.later(() => { c.wrap.remove(); next(); }, 5600);
+      t.later(() => { if (cur !== c) return; c.wrap.remove(); next(); }, 5600);
     }
 
-    function next() {
-      const a = order[idx++ % order.length];
-      if (idx % order.length === 0) kit.shuffle(order);
+    function next(chosen) {
+      let a = chosen;
+      if (!a) {
+        a = order[idx++ % order.length];
+        if (idx % order.length === 0) kit.shuffle(order);
+      }
+      markPicked(a);
       cur = build(a);
       layout();
       measure(cur);
