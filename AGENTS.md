@@ -124,5 +124,6 @@ node tools/drive.mjs "http://127.0.0.1:8765/?spil=<id>" /path/to/out/prefix '[{"
   when reporting, and ask the user to check those on the iPad.
 
 ## Related
-`~/Dropbox/Adam-spil/bogstavleg` is a separate keyboard letter game for the PC (Chrome, keyboard lock). It is
-deliberately not part of this suite, because the iPad has no keyboard.
+`~/Dropbox/Adam-spil/bogstavleg` is a separate keyboard letter game for the PC (Chrome, keyboard lock).
+`games/bogstaver.js` is its iPad port with an on-screen Danish keyboard. The recordings in `games/bogstav-lyd/`
+are copies of Bogstavleg's `lyd/` (letters only, no digits); if new takes are recorded there, copy them over.

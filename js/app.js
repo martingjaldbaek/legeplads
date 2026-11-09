@@ -30,11 +30,12 @@ import have from '../games/have.js';
 import akvarie from '../games/akvarie.js';
 import snekugle from '../games/snekugle.js';
 import lydzoo from '../games/lydzoo.js';
+import bogstaver from '../games/bogstaver.js';
 
 // To add a game: create games/<name>.js (see README) and add it here.
 const GAMES = [bobler, former, xylofon, maling, tryllemaling, boh, bondegaard, badetid,
   farver, ansigt, blandeansigt, blandefigur, dyrpuslespil, ballon, instrumenter, musik,
-  koekken, madpakke, butik, dukkehus, klaedpaa, tandboerste, bilvask, taarn, byggeplads, tog, have, akvarie, snekugle, lydzoo];
+  koekken, madpakke, butik, dukkehus, klaedpaa, tandboerste, bilvask, taarn, byggeplads, tog, have, akvarie, snekugle, lydzoo, bogstaver];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;
