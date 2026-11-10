@@ -1,40 +1,40 @@
 import * as gaarden from './art/gaarden.js';
+import * as havet from './art/havet.js';
+import * as rummet from './art/rummet.js';
+import * as junglen from './art/junglen.js';
+import * as byen from './art/byen.js';
 
 /* Tryllemaling: like a "paint with water" book. The page starts as a colouring-book outline of the main
  * characters; wherever a finger brushes, the colours magically appear – and hidden surprises (a butterfly,
- * a crab…) that had no outline at all pop into view. When most of the page is painted it finishes itself
- * with a sparkle, and ➡️ turns to the next page. No voice – just sparkles and chimes.
+ * a crab…) that had no outline at all pop into view with a chime. When most of the page is painted it
+ * finishes itself with a fanfare, and the next page in the row along the top starts to pulse.
+ * No voice – just sparkles and chimes.
  *
- * Page 1 is hand-drawn SVG line art (games/art/gaarden.js); the others are built from emoji with an
- * outline traced around their silhouettes.
+ * Pages are hand-drawn SVG (games/art/gaarden.js, havet.js, rummet.js, junglen.js, byen.js), each drawn in a
+ * 1600×1000 box with the sky and ground reaching far beyond it. Landscape shows the box (cropped a little at
+ * the sides); portrait shows nearly its full width with extra sky above and ground below.
+ * Each page remembers what was painted, so you can switch back and forth; tapping the current page in the
+ * row starts it over.
  */
-// emoji, spoken name, x, y (fractions of the page), size (fraction of the short side), hidden
-const SCENES = [
-  { art: gaarden },
-  { sky: ['#a5e4ff', '#e9fbff'], ground: ['#4fb6ec', '#1f78c8'], horizon: 0.42, clouds: true, objects: [
-    ['⛵', 'Båden', 0.3, 0.34, 0.22], ['🐳', 'Hvalen', 0.6, 0.66, 0.34], ['☀️', 'Solen', 0.1, 0.13, 0.15],
-    ['🐠', 'en fisk', 0.18, 0.64, 0.12, 1], ['🐙', 'en blæksprutte', 0.86, 0.82, 0.14, 1], ['🦀', 'en krabbe', 0.36, 0.9, 0.1, 1], ['🐢', 'en skildpadde', 0.9, 0.52, 0.11, 1]] },
-  { sky: ['#1b1a4a', '#3b2a7a'], ground: ['#8a7fc9', '#5f54a0'], horizon: 0.84, stars: true, objects: [
-    ['🚀', 'Raketten', 0.5, 0.5, 0.36], ['🌙', 'Månen', 0.17, 0.2, 0.2], ['🪐', 'Planeten', 0.83, 0.24, 0.22],
-    ['👽', 'et rumvæsen', 0.84, 0.74, 0.13, 1], ['⭐', 'en stjerne', 0.36, 0.14, 0.09, 1], ['🛸', 'en flyvende tallerken', 0.17, 0.66, 0.15, 1], ['🌟', 'en stjerne', 0.64, 0.12, 0.08, 1]] },
-  { sky: ['#bdf2cf', '#effff4'], ground: ['#4fbf5a', '#2f8f3d'], horizon: 0.64, clouds: true, objects: [
-    ['🦁', 'Løven', 0.32, 0.72, 0.28], ['🐘', 'Elefanten', 0.74, 0.66, 0.32], ['🌴', 'Palmetræet', 0.1, 0.42, 0.34],
-    ['🐒', 'en abe', 0.52, 0.3, 0.12, 1], ['🦜', 'en papegøje', 0.9, 0.24, 0.11, 1], ['🍌', 'en banan', 0.5, 0.9, 0.09, 1], ['🐍', 'en slange', 0.92, 0.9, 0.12, 1]] },
-];
+const PAGES = [gaarden, havet, rummet, junglen, byen];
 const GRID_X = 32, GRID_Y = 24;
 const DONE_AT = 0.86;
-const INK = '#4a3b5c';
+const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
 const CSS = `
 .tm-cv { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
 .tm-full { opacity:0; transition: opacity .9s ease; pointer-events:none; }
 .tm-full.show { opacity:1; }
-.tm-next { position:absolute; z-index:10; top: calc(env(safe-area-inset-top) + 14px); right: calc(env(safe-area-inset-right) + 14px);
-  width:max(64px, 9vmin); height:max(64px, 9vmin); border:none; border-radius:50%; padding:0;
-  background: rgba(255,255,255,.9); box-shadow: 0 4px 0 rgba(0,0,0,.12); font-size:max(32px, 4.6vmin); }
-.tm-next.pulse { animation: tm-pulse 1s ease-in-out infinite; }
-.tm-next:active { transform: scale(.9); }
-@keyframes tm-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.18)} }
+.tm-pick { position:absolute; z-index:10; top:12px; left:104px; right:12px; display:flex; justify-content:center; gap:10px;
+  pointer-events:none; }
+.tm-pick button { pointer-events:auto; position:relative; flex:1 1 0; max-width:130px; aspect-ratio:16/10; padding:0; border:4px solid #fff;
+  border-radius:14px; overflow:hidden; background:#fffaf0; box-shadow:0 4px 0 rgba(0,0,0,.15); transition: transform .15s; }
+.tm-pick img { width:100%; height:100%; object-fit:cover; display:block; }
+.tm-pick button.on { border-color:#ffd60a; transform: translateY(4px) scale(1.06); }
+.tm-pick button.done::after { content:'⭐'; position:absolute; right:2px; bottom:0; font-size:22px; line-height:1; }
+.tm-pick button.pulse { animation: tm-pulse 1s ease-in-out infinite; }
+.tm-pick button:active { transform: scale(.92); }
+@keyframes tm-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
 `;
 
 export default {
@@ -51,136 +51,81 @@ export default {
     const lineCv = document.createElement('canvas');    // the outline page
     const paintCv = document.createElement('canvas');   // colour revealed so far
     const fullCv = document.createElement('canvas');    // the finished picture, faded in at the end
-    const fxCv = document.createElement('canvas');      // sparkles
+    const fxCv = document.createElement('canvas');      // sparkles, hint wand
     for (const c of [lineCv, paintCv, fullCv, fxCv]) { c.className = 'tm-cv'; root.appendChild(c); }
     fullCv.classList.add('tm-full');
     const colorCv = document.createElement('canvas');   // offscreen: the full-colour picture
-    const next = document.createElement('button');
-    next.className = 'tm-next';
-    next.textContent = '➡️';
-    next.setAttribute('aria-label', 'Næste side');
-    root.appendChild(next);
     const lc = lineCv.getContext('2d'), pc = paintCv.getContext('2d'), fc = fullCv.getContext('2d'),
           xc = fxCv.getContext('2d'), cc = colorCv.getContext('2d');
 
-    let W = 0, H = 0, S = 0, dpr = 1, sceneIdx = 0, scene = SCENES[sceneIdx];
-    let grid, found, strokes = [], done = false;
+    const svgSrc = str => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(str);
+    const svgImage = str => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = svgSrc(str); });
+
+    // page picker: thumbnails of the finished pictures
+    const pick = document.createElement('div');
+    pick.className = 'tm-pick';
+    const pickBtns = PAGES.map((art, i) => {
+      const b = document.createElement('button');
+      b.innerHTML = `<img alt="" src="${svgSrc(art.svg(false, 320, 200, '0 0 1600 1000'))}">`;
+      b.addEventListener('click', () => (i === pageIdx ? restartPage() : goPage(i)));
+      pick.appendChild(b);
+      return b;
+    });
+    root.appendChild(pick);
+
+    let W = 0, H = 0, S = 0, dpr = 1, pageIdx = 0, art = PAGES[0];
+    // per-page progress, kept while the game is open: strokes in page units, coverage, finds
+    const states = PAGES.map(() => null);
+    const fresh = () => ({ grid: new Uint8Array(GRID_X * GRID_Y), found: new Set(), strokes: [], done: false });
+    let st = null;
     const sparkles = [];
+    let pageStart = performance.now();
 
-    const emojiFont = px => `${px}px system-ui, "Apple Color Emoji", sans-serif`;
-    // every scene's objects in screen coordinates: { e?, x, y, size?, hit, hidden }
-    function objects() {
-      if (scene.art) {
-        const k = Math.max(W / scene.art.W, H / scene.art.H), ox = (W - scene.art.W * k) / 2, oy = (H - scene.art.H * k) / 2;
-        return scene.art.hidden.map(h => ({ x: ox + h.x * k, y: oy + h.y * k, hit: h.r * k, hidden: true }));
-      }
-      return scene.objects.map(o => ({ e: o[0], x: o[2] * W, y: o[3] * H, size: o[4] * S * 1.15, hit: o[4] * S * 0.37, hidden: !!o[5] }));
+    // the page's 1600×1000 box → the screen below the page row: cover it, but never crop to less than
+    // 1540 units wide (portrait then shows extra sky above and ground below)
+    let k = 1, ox = 0, oy = 0;
+    function view() {
+      const top = pick.offsetHeight + 16, h = H - top;
+      k = Math.min(Math.max(W / art.W, h / art.H), W / 1540);
+      ox = (W - art.W * k) / 2; oy = top + (h - art.H * k) / 2;
+      return `${(-ox / k).toFixed(2)} ${(-oy / k).toFixed(2)} ${(W / k).toFixed(2)} ${(H / k).toFixed(2)}`;
     }
-    const svgImage = str => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null);
-      im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(str); });
+    const hiddenScreen = () => art.hidden.map(h => ({ x: ox + h.x * k, y: oy + h.y * k, hit: h.r * k }));
     let renderToken = 0;
-
-    function drawBackground(ctx) {
-      const hy = scene.horizon * H;
-      const sky = ctx.createLinearGradient(0, 0, 0, hy);
-      sky.addColorStop(0, scene.sky[0]); sky.addColorStop(1, scene.sky[1]);
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);   // full height: no seam under the wavy ground
-      const gr = ctx.createLinearGradient(0, hy, 0, H);
-      gr.addColorStop(0, scene.ground[0]); gr.addColorStop(1, scene.ground[1]);
-      ctx.fillStyle = gr;
-      ctx.beginPath();
-      ctx.moveTo(0, hy);
-      ctx.quadraticCurveTo(W * 0.3, hy - H * 0.05, W * 0.55, hy);
-      ctx.quadraticCurveTo(W * 0.8, hy + H * 0.04, W, hy - H * 0.02);
-      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath(); ctx.fill();
-      if (scene.clouds) {
-        ctx.fillStyle = 'rgba(255,255,255,.9)';
-        for (const [cx, cy, s] of [[0.15, 0.12, 1], [0.6, 0.08, 0.8], [0.42, 0.2, 0.6]]) {
-          for (const [dx, dy, r] of [[0, 0, 1], [1, -0.35, 0.8], [-0.9, 0.1, 0.7], [0.5, 0.3, 0.8]]) {
-            ctx.beginPath(); ctx.arc(cx * W + dx * S * 0.05 * s, cy * H + dy * S * 0.05 * s, r * S * 0.05 * s, 0, 6.283); ctx.fill();
-          }
-        }
-      }
-      if (scene.stars) {
-        ctx.fillStyle = '#fff8c4';
-        for (let i = 0; i < 70; i++) {
-          const x = ((i * 977) % 1000) / 1000 * W, y = ((i * 613) % 1000) / 1000 * scene.horizon * H;
-          ctx.beginPath(); ctx.arc(x, y, S * (0.002 + (i % 3) * 0.0015), 0, 6.283); ctx.fill();
-        }
-      }
-    }
-
-    // colouring-book outline of an emoji: dilate its silhouette and cut the silhouette back out
-    function outline(ctx, o) {
-      const thick = Math.max(2, S * 0.006) * dpr, size = o.size * dpr, pad = thick * 2 + 6;
-      const s = Math.ceil(size * 1.35 + pad * 2);
-      const sil = document.createElement('canvas'); sil.width = sil.height = s;
-      const sc = sil.getContext('2d');
-      sc.font = emojiFont(size); sc.textAlign = 'center'; sc.textBaseline = 'middle';
-      sc.fillText(o.e, s / 2, s / 2);
-      sc.globalCompositeOperation = 'source-in';
-      sc.fillStyle = INK; sc.fillRect(0, 0, s, s);
-      const ring = document.createElement('canvas'); ring.width = ring.height = s;
-      const rc = ring.getContext('2d');
-      for (let a = 0; a < 16; a++) rc.drawImage(sil, Math.cos(a / 16 * 6.283) * thick, Math.sin(a / 16 * 6.283) * thick);
-      rc.globalCompositeOperation = 'destination-out';
-      rc.drawImage(sil, 0, 0);
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(ring, o.x * dpr - s / 2, o.y * dpr - s / 2);
-      ctx.restore();
-    }
 
     function render() {
       W = root.clientWidth; H = root.clientHeight; S = Math.min(W, H);
       dpr = Math.min(2, window.devicePixelRatio || 1);
       for (const c of [lineCv, paintCv, fullCv, fxCv, colorCv]) { c.width = W * dpr; c.height = H * dpr; }
       for (const ctx of [lc, pc, fc, xc, cc]) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const vb = view();
       const token = ++renderToken;
-      if (scene.art) {
-        // vector page: rasterise both versions at the exact device-pixel size for crisp lines
-        lc.fillStyle = '#fffaf0'; lc.fillRect(0, 0, W, H);
-        Promise.all([svgImage(scene.art.svg(true, W * dpr, H * dpr)), svgImage(scene.art.svg(false, W * dpr, H * dpr))]).then(([li, co]) => {
-          if (token !== renderToken || !li || !co) return;
-          lc.drawImage(li, 0, 0, W, H);
-          cc.drawImage(co, 0, 0, W, H);
-          fc.drawImage(colorCv, 0, 0, W, H);
-          for (const [x, y, r] of strokes) dab(x * W, y * H, r * S, false);
-        });
-        return;
-      }
-      const objs = objects();
-      // full-colour picture (offscreen)
-      drawBackground(cc);
-      cc.textAlign = 'center'; cc.textBaseline = 'middle';
-      for (const o of objs) { cc.font = emojiFont(o.size); cc.fillText(o.e, o.x, o.y); }
-      // the outline page: paper, a pencil horizon, outlines of the main characters only
       lc.fillStyle = '#fffaf0'; lc.fillRect(0, 0, W, H);
-      lc.strokeStyle = 'rgba(74,59,92,.35)'; lc.lineWidth = Math.max(1.5, S * 0.003);
-      const hy = scene.horizon * H;
-      lc.beginPath(); lc.moveTo(0, hy);
-      lc.quadraticCurveTo(W * 0.3, hy - H * 0.05, W * 0.55, hy);
-      lc.quadraticCurveTo(W * 0.8, hy + H * 0.04, W, hy - H * 0.02);
-      lc.stroke();
-      for (const o of objs) if (!o.hidden) outline(lc, o);
-      fc.drawImage(colorCv, 0, 0, W, H);
-      // re-apply what was already painted (after a rotation)
-      for (const [x, y, r] of strokes) dab(x * W, y * H, r * S, false);
+      // rasterise both versions at the exact device-pixel size for crisp lines
+      Promise.all([svgImage(art.svg(true, W * dpr, H * dpr, vb)), svgImage(art.svg(false, W * dpr, H * dpr, vb))]).then(([li, co]) => {
+        if (token !== renderToken || !li || !co) return;
+        lc.drawImage(li, 0, 0, W, H);
+        cc.drawImage(co, 0, 0, W, H);
+        fc.clearRect(0, 0, W, H);
+        fc.drawImage(colorCv, 0, 0, W, H);
+        for (const [x, y, r] of st.strokes) dab(ox + x * k, oy + y * k, r * k, false);
+      });
     }
 
-    function newPage(first) {
-      if (!first) {
-        sceneIdx = (sceneIdx + 1) % SCENES.length;
-        scene = SCENES[sceneIdx];
-        kit.sfx.whoosh();
-      }
-      grid = new Uint8Array(GRID_X * GRID_Y);
-      found = new Set();
-      strokes = [];
-      done = false;
-      fullCv.classList.remove('show');
-      next.classList.remove('pulse');
+    function showPage(i) {
+      pageIdx = i; art = PAGES[i];
+      st = states[i] || (states[i] = fresh());
+      fullCv.classList.toggle('show', st.done);
+      pickBtns.forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.remove('pulse'); b.classList.toggle('done', !!(states[j] && states[j].done)); });
       pc.clearRect(0, 0, W, H);
+      pageStart = performance.now();
       render();
+    }
+    function goPage(i) { kit.sfx.whoosh(); showPage(i); }
+    function restartPage() {
+      kit.sfx.rustle();
+      states[pageIdx] = null;
+      showPage(pageIdx);
     }
 
     // reveal the colour picture in a circle around (x, y)
@@ -193,18 +138,18 @@ export default {
       if (w > 0 && h > 0) pc.drawImage(colorCv, x0 * dpr, y0 * dpr, w * dpr, h * dpr, x0, y0, w, h);
       pc.restore();
       if (!record) return;
-      strokes.push([x / W, y / H, r / S]);
-      // coverage grid
+      st.strokes.push([(x - ox) / k, (y - oy) / k, r / k]);
+      // coverage grid (screen cells)
       const gx0 = Math.max(0, Math.floor((x - r) / W * GRID_X)), gx1 = Math.min(GRID_X - 1, Math.floor((x + r) / W * GRID_X));
       const gy0 = Math.max(0, Math.floor((y - r) / H * GRID_Y)), gy1 = Math.min(GRID_Y - 1, Math.floor((y + r) / H * GRID_Y));
       for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) {
         const cx = (gx + 0.5) / GRID_X * W, cy = (gy + 0.5) / GRID_Y * H;
-        if (Math.hypot(cx - x, cy - y) < r + W / GRID_X * 0.4) grid[gy * GRID_X + gx] = 1;
+        if (Math.hypot(cx - x, cy - y) < r + W / GRID_X * 0.4) st.grid[gy * GRID_X + gx] = 1;
       }
       // did we just uncover something?
-      objects().forEach((o, i) => {
-        if (!o.hidden || found.has(i) || Math.hypot(o.x - x, o.y - y) > o.hit) return;
-        found.add(i);
+      hiddenScreen().forEach((o, i) => {
+        if (st.found.has(i) || Math.hypot(o.x - x, o.y - y) > o.hit) return;
+        st.found.add(i);
         kit.sfx.chime();
         kit.burst(o.x, o.y, 30, 0.7);
       });
@@ -212,17 +157,26 @@ export default {
     }
 
     function finish() {
-      done = true;
+      st.done = true;
+      const mine = st;
       fullCv.classList.add('show');
       kit.sfx.fanfare();
       kit.bigBurst();
-      t.later(() => next.classList.add('pulse'), 1500);
+      // any surprises not found yet show themselves with a sparkle
+      hiddenScreen().forEach((o, i) => {
+        if (st.found.has(i)) return;
+        st.found.add(i);
+        t.later(() => { if (st !== mine) return; kit.burst(o.x, o.y, 24, 0.6); kit.sfx.xylo(kit.scaleHz(7 + i)); }, 900 + i * 260);
+      });
+      pickBtns[pageIdx].classList.add('done');
+      const nxt = [...PAGES.keys()].map(j => (pageIdx + 1 + j) % PAGES.length).find(j => !(states[j] && states[j].done));
+      t.later(() => { if (st === mine && nxt !== undefined) pickBtns[nxt].classList.add('pulse'); }, 1800);
     }
 
     const last = new Map();
     let lastShimmer = 0, lastCheck = 0;
     function brush(id, x, y) {
-      const r = S * 0.065;
+      const r = S * 0.07;
       const p = last.get(id) || { x, y };
       const d = Math.hypot(x - p.x, y - p.y), n = Math.max(1, Math.ceil(d / (r * 0.4)));
       for (let i = 1; i <= n; i++) dab(p.x + (x - p.x) * i / n, p.y + (y - p.y) * i / n, r * kit.rand(0.9, 1.08));
@@ -232,11 +186,11 @@ export default {
         lastShimmer = now;
         kit.tone(kit.scaleHz(Math.floor(kit.rand(8, 16)), 523.25), { dur: 0.35, vol: 0.05, attack: 0.01 });
       }
-      if (!done && now - lastCheck > 250) {
+      if (!st.done && now - lastCheck > 250) {
         lastCheck = now;
         let n2 = 0;
-        for (const v of grid) n2 += v;
-        if (n2 / grid.length >= DONE_AT) finish();
+        for (const v of st.grid) n2 += v;
+        if (n2 / st.grid.length >= DONE_AT) finish();
       }
     }
 
@@ -249,29 +203,40 @@ export default {
     const up = e => last.delete(e.pointerId);
     fxCv.addEventListener('pointerup', up);
     fxCv.addEventListener('pointercancel', up);
-    next.addEventListener('click', () => newPage(false));
 
     let raf = 0;
-    function frame() {
+    function frame(now) {
       xc.clearRect(0, 0, W, H);
+      // hint: on an untouched page, a magic wand drifts about trailing sparkles
+      if (!st.strokes.length && now - pageStart > 2500) {
+        const ph = (now - pageStart - 2500) / 1000;
+        const wx = W / 2 + Math.sin(ph * 1.3) * W * 0.25, wy = H * 0.55 + Math.sin(ph * 2.6) * H * 0.12;
+        if (Math.random() < 0.6) sparkles.push({ x: wx - S * 0.03, y: wy + S * 0.03, life: 1, hue: kit.rand(0, 360), s: S * kit.rand(0.008, 0.016) });
+        xc.save();
+        xc.font = `${S * 0.1}px ${EMOJI_FONT}`; xc.textAlign = 'center'; xc.textBaseline = 'middle'; xc.fillStyle = '#000';
+        xc.globalAlpha = Math.min(1, ph);
+        xc.fillText('🪄', wx, wy);
+        xc.restore();
+      }
       for (let i = sparkles.length - 1; i >= 0; i--) {
         const p = sparkles[i];
         p.life -= 0.03;
         if (p.life <= 0) { sparkles.splice(i, 1); continue; }
         xc.fillStyle = `hsla(${p.hue}, 100%, 75%, ${p.life})`;
         xc.beginPath();
-        for (let k = 0; k < 8; k++) {
-          const rr = k % 2 ? p.s * 0.4 : p.s, a = k * Math.PI / 4;
+        for (let q = 0; q < 8; q++) {
+          const rr = q % 2 ? p.s * 0.4 : p.s, a = q * Math.PI / 4;
           xc.lineTo(p.x + Math.cos(a) * rr, p.y - (1 - p.life) * S * 0.03 + Math.sin(a) * rr);
         }
         xc.closePath(); xc.fill();
       }
       raf = requestAnimationFrame(frame);
     }
-    raf = requestAnimationFrame(frame);
 
     const offResize = kit.onResize(root, render);
-    newPage(true);
+    W = root.clientWidth; H = root.clientHeight;
+    showPage(0);
+    raf = requestAnimationFrame(frame);
     return () => { t.clear(); cancelAnimationFrame(raf); offResize(); };
   },
 };

@@ -1,7 +1,8 @@
 /* Hand-drawn SVG page for Tryllemaling: the farm.
  * svg(line) returns the page either as a colouring-book outline (line = true: paper-filled shapes, hidden
  * things left out) or in full colour (line = false). Both share the same ink lines, so the painted
- * result looks like a printed picture. Coordinates are in a 1600×1000 box, scaled to cover the screen.
+ * result looks like a printed picture. Coordinates are in a 1600×1000 box; vb is the viewBox to show (sky and
+ * ground reach far beyond the box, so portrait screens can show more above and below).
  * hidden: surprises with no outline – x, y, radius in the same box.
  */
 export const W = 1600, H = 1000;
@@ -16,7 +17,7 @@ export const hidden = [
   { x: 560, y: 905, r: 70 },    // snail
 ];
 
-export function svg(line, pxW, pxH) {
+export function svg(line, pxW, pxH, vb = '0 0 1600 1000') {
   const f = c => (line ? PAPER : c);
   const ink = `stroke="${INK}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"`;
   const thin = `stroke="${INK}" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"`;
@@ -35,12 +36,12 @@ export function svg(line, pxW, pxH) {
     ${[0, 72, 144, 216, 288].map(d => { const a = d * Math.PI / 180; return `<circle cx="${x + Math.cos(a) * 24}" cy="${y + Math.sin(a) * 24}" r="20" fill="${c}" ${thin}/>`; }).join('')}
     <circle cx="${x}" cy="${y}" r="15" fill="#ffd23f" ${thin}/></g>`;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${pxW}" height="${pxH}" viewBox="${vb}" preserveAspectRatio="none">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd3ff"/><stop offset="1" stop-color="#e6f7ff"/></linearGradient>
-    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9be071"/><stop offset="1" stop-color="#57b043"/></linearGradient>
+    <linearGradient id="sky" gradientUnits="userSpaceOnUse" x1="0" y1="-500" x2="0" y2="660"><stop offset="0" stop-color="#8fd3ff"/><stop offset="1" stop-color="#e6f7ff"/></linearGradient>
+    <linearGradient id="grass" gradientUnits="userSpaceOnUse" x1="0" y1="620" x2="0" y2="1100"><stop offset="0" stop-color="#9be071"/><stop offset="1" stop-color="#57b043"/></linearGradient>
   </defs>
-  <rect x="-200" y="-200" width="2000" height="1400" fill="${line ? PAPER : 'url(#sky)'}"/>
+  <rect x="-1000" y="-1500" width="3600" height="4200" fill="${line ? PAPER : 'url(#sky)'}"/>
   ${only(cloud(200, 140, 1.1) + cloud(1080, 60, 0.8) + cloud(420, 50, 0.6))}
 
   <!-- sun -->
@@ -51,8 +52,8 @@ export function svg(line, pxW, pxH) {
     <path d="M788 175 Q820 205 852 175" fill="none" ${ink}/></g>
 
   <!-- hills -->
-  <path d="M-50 560 Q 300 470 650 540 T 1650 520 V1050 H-50Z" fill="${f('#b7e88f')}" ${ink}/>
-  <path d="M-50 660 Q 450 590 900 655 T 1650 640 V1050 H-50Z" fill="${line ? PAPER : 'url(#grass)'}" ${ink}/>
+  <path d="M-50 560 Q 300 470 650 540 T 1650 520 Q 2100 480 2600 520 V2700 H-1000 V560 Q -500 500 -50 560 Z" fill="${f('#b7e88f')}" ${ink}/>
+  <path d="M-50 660 Q 450 590 900 655 T 1650 640 Q 2100 610 2600 640 V2700 H-1000 V660 Q -500 620 -50 660 Z" fill="${line ? PAPER : 'url(#grass)'}" ${ink}/>
 
   <!-- fence -->
   <g>
