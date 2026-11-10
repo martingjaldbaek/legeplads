@@ -1,7 +1,8 @@
 /* Snekugle: a big snow globe. Drag little figures from the tray into the globe; they drop onto the snowy
- * mound. Swipe back and forth over the globe (or shake the iPad, if motion is already allowed) and the flakes
- * swirl up and slowly settle, while a music box twinkles. The buttons swap snow for glitter, hearts, stars
- * or bubbles (which float up instead). Tap the base and the music box plays a little tune.
+ * mound. Grab the globe and shake it: it follows the finger and springs back, and the flakes lag behind like
+ * water, swirl up and slowly settle while a music box twinkles. A tap puffs flakes up where you touch. The
+ * buttons swap snow for glitter, hearts, stars or bubbles (which float up instead). Hold the base to wind the
+ * music box (the key turns, ratchet clicks); let go and it plays, longer the more it was wound.
  */
 const FIGS = [
   ['⛄', 'Snemand', .34], ['🎄', 'Juletræ', .4], ['🏡', 'Hus', .4], ['🦌', 'Rensdyr', .32],
@@ -36,9 +37,14 @@ const CSS = `
     radial-gradient(circle at 70% 80%, rgba(255,255,255,0) 60%, rgba(255,255,255,.25) 72%, rgba(255,255,255,0) 74%);
   box-shadow: inset 0 0 0 var(--rim) rgba(255,255,255,.55), inset 0 -2vmin 6vmin rgba(255,255,255,.25), 0 0 6vmin rgba(160,200,255,.35); }
 .snekugle-base { position:absolute; overflow:visible; touch-action:none; }
-.snekugle-base .key { transform-box: fill-box; transform-origin: 0% 50%; }
-.snekugle-base.play .key { animation: snekugle-key 1.6s linear; }
-@keyframes snekugle-key { to { transform: rotate(720deg); } }
+.snekugle-base .key { transform-box: fill-box; transform-origin: 50% 50%; }
+.snekugle-base.wind .key, .snekugle-base.play .key { animation: snekugle-key .5s linear infinite; }
+.snekugle-base.play .key { animation-duration: .9s; animation-direction: reverse; }
+@keyframes snekugle-key { 0% { transform: scaleY(1) } 50% { transform: scaleY(-1) } 100% { transform: scaleY(1) } }
+.snekugle-hand { position:absolute; pointer-events:none; line-height:1; opacity:0; z-index:5; }
+.snekugle-hand.show { animation: snekugle-hand 2.4s ease-in-out; }
+@keyframes snekugle-hand { 0% { opacity:0; transform: translateX(-40%) } 12% { opacity:1 } 30% { transform: translateX(40%) }
+  50% { transform: translateX(-40%) } 70% { transform: translateX(40%) } 88% { opacity:1 } 100% { opacity:0; transform: translateX(0) } }
 .snekugle-fig { position:absolute; line-height:1; touch-action:none; transform: translate(-50%, -92%); will-change: top, left; }
 .snekugle-fig span { display:inline-block; transform-origin: 50% 100%; }
 .snekugle-fig.drop { transition: top .5s cubic-bezier(.34,1.56,.64,1); }
@@ -209,10 +215,38 @@ export default {
       noteStep = Math.max(0, Math.min(9, noteStep + kit.pick([-2, -1, 1, 1, 2])));
       musicBox(noteStep, 0, .04 + Math.min(.06, energy * .05));
     }
-    function playTune() {
-      base.classList.remove('play'); void base.getBoundingClientRect(); base.classList.add('play');
-      TUNE.forEach((s, i) => musicBox(s, i * .2, .1));
+    let tuneEnd = 0;
+    function playTune(notes = TUNE.length) {
+      base.classList.remove('wind');
+      base.classList.add('play');
+      const tune = [];
+      while (tune.length < notes) tune.push(...TUNE);
+      tune.length = notes;
+      tune.forEach((s, i) => musicBox(s, i * .2, .1));
       stir(0, -12, GR, GR * 1.6);
+      const end = performance.now() + notes * 200 + 300;
+      tuneEnd = end;
+      t.later(() => { if (tuneEnd === end) base.classList.remove('play'); }, notes * 200 + 300);
+    }
+    // hold the base to wind the music box; let go and it plays
+    let wind = null;
+    function windStart() {
+      if (wind) windStop();
+      base.classList.remove('play');
+      base.classList.add('wind');
+      wind = { clicks: 0, id: t.every(() => {
+        wind.clicks++;
+        kit.tone(2400 + (wind.clicks % 2) * 300, { dur: .03, vol: .05, attack: .001 });
+        if (wind.clicks >= 16) windStop();   // fully wound (also the safety net if iOS loses the finger)
+      }, 180) };
+      kit.tone(2400, { dur: .03, vol: .05, attack: .001 });
+    }
+    function windStop() {
+      if (!wind) return;
+      clearInterval(wind.id);
+      const n = Math.max(TUNE.length, Math.min(45, wind.clicks * 3));
+      wind = null;
+      playTune(n);
     }
 
     // ---------- animation ----------
@@ -249,7 +283,17 @@ export default {
       // the globe rocks a little when shaken, and springs back
       tiltV += -tilt * 40 * dt; tiltV *= Math.exp(-5 * dt); tilt += tiltV * dt * 10;
       tilt = Math.max(-8, Math.min(8, tilt));
-      globe.style.transform = `rotate(${tilt}deg)`;
+      if (!ptrs.size) {   // let go: spring back to the middle with a little wobble
+        offV[0] += -off[0] * 90 * dt; offV[1] += -off[1] * 90 * dt;
+        offV[0] *= Math.exp(-6 * dt); offV[1] *= Math.exp(-6 * dt);
+        const ox = off[0], oy = off[1];
+        off[0] += offV[0] * dt; off[1] += offV[1] * dt;
+        if (Math.abs(offV[0]) + Math.abs(offV[1]) > 20) stir(off[0] - ox, off[1] - oy);
+      }
+      globe.style.transform = `translate(${off[0]}px, ${off[1]}px) rotate(${tilt}deg)`;
+      base.style.transform = `translate(${off[0]}px, ${off[1]}px)`;
+      // idle hint: a hand shows the shake
+      if (now - lastTouch > 7000) { lastTouch = now; showHand(); }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, 2 * GR, 2 * GR);
@@ -396,24 +440,60 @@ export default {
       return b;
     });
 
-    // swipe over the globe to shake it (every finger counts)
-    const ptrs = new Map();
+    // grab the globe and shake it: it follows the finger (within limits) and the flakes lag behind
+    const ptrs = new Map(), off = [0, 0], offV = [0, 0];
+    let lastTouch = performance.now();
+    function puff(px, py) {
+      // a tap puffs up the flakes around the finger, including the ones resting on the mound
+      for (const p of parts) {
+        const d = Math.hypot(p.x - px, p.y - py);
+        if (d > GR * .55) continue;
+        const k = (1 - d / (GR * .55)) * GR * 2.2, a = Math.atan2(p.y - py, p.x - px);
+        p.vx += Math.cos(a) * k * .6 + kit.rand(-.2, .2) * k;
+        p.vy += Math.sin(a) * k * .6 - k * .9;
+      }
+      energy = Math.min(1.5, energy + .5);
+      kit.noise({ dur: .18, vol: .07, freq: 2200, q: .7, sweep: 4000 });
+    }
     globe.addEventListener('pointerdown', e => {
       e.preventDefault();
+      lastTouch = performance.now();
+      // a new touch always wins: forget fingers iOS may have lost
+      for (const id of [...ptrs.keys()]) if (id !== e.pointerId) ptrs.delete(id);
       try { globe.setPointerCapture(e.pointerId); } catch (err) {}
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
-      stir(kit.rand(-6, 6), -8, e.clientX - (gx - GR), e.clientY - (gy - GR));
+      offV[0] = offV[1] = 0;
+      puff(e.clientX - (gx - GR) - off[0], e.clientY - (gy - GR) - off[1]);
     });
     globe.addEventListener('pointermove', e => {
       const p = ptrs.get(e.pointerId);
       if (!p) return;
-      stir(e.clientX - p[0], e.clientY - p[1], e.clientX - (gx - GR), e.clientY - (gy - GR));
+      lastTouch = performance.now();
+      const lim = GR * .3, dx = e.clientX - p[0], dy = e.clientY - p[1];
+      const nx = Math.max(-lim, Math.min(lim, off[0] + dx)), ny = Math.max(-lim * .6, Math.min(lim * .6, off[1] + dy));
+      const mx = nx - off[0], my = ny - off[1];
+      off[0] = nx; off[1] = ny;
+      // the glass moves by (mx, my); the finger's full movement still stirs a bit even at the limit
+      stir(mx * 1.6 + dx * .4, my * 1.6 + dy * .4, e.clientX - (gx - GR) - off[0], e.clientY - (gy - GR) - off[1]);
       ptrs.set(e.pointerId, [e.clientX, e.clientY]);
     });
-    const up = e => ptrs.delete(e.pointerId);
+    const up = e => { ptrs.delete(e.pointerId); lastTouch = performance.now(); };
     globe.addEventListener('pointerup', up);
     globe.addEventListener('pointercancel', up);
-    base.addEventListener('pointerdown', e => { e.preventDefault(); playTune(); });
+    base.addEventListener('pointerdown', e => { e.preventDefault(); lastTouch = performance.now(); windStart(); });
+    base.addEventListener('pointerup', windStop);
+    base.addEventListener('pointercancel', windStop);
+    base.addEventListener('pointerleave', windStop);
+
+    const hand = document.createElement('div');
+    hand.className = 'snekugle-hand';
+    hand.textContent = '👆';
+    root.appendChild(hand);
+    function showHand() {
+      Object.assign(hand.style, { left: gx - GR * .2 + 'px', top: gy - GR * .1 + 'px', fontSize: GR * .4 + 'px' });
+      kit.replay(hand, 'show');
+      tiltV += 6;   // the globe gives a little wobble too
+    }
 
     // real shaking, only if motion events already flow (iOS needs a permission prompt, which we never show)
     let lastAcc = null;
