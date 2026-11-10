@@ -35,6 +35,7 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 - **Snekugle** ⛄: put figures into a snow globe and swipe to shake it. Themes are snow, glitter, hearts, stars and bubbles, and tapping the base winds a music box.
 - **Lyd-zoo** 🦁: a long street to swipe along, past farm, pond, town, station, beach and zoo, with 41 things that make sounds when tapped.
 - **Bogstaver** 🔤: the iPad version of Bogstavleg. A Danish keyboard on screen; the letter to find glows on it. 🔤 Find bogstavet (a random letter) or 🎵 ABC-sangen (A to Å in song order, ending with "28 skal der stå på min lærers storetå"). Uses our own recordings in `games/bogstav-lyd/` (copied from Bogstavleg's `lyd/`, letters only), with the iPad voice as a fallback.
+- **Papirflyver** ✈️: fold a paper plane in six folds (tap, or drag the flap along), choosing from ten patterned sheets. Then flick it to throw (a hard upward flick loops) or just tap. It glides past stars, balloons and birds; tap the sky for a gust of wind. It lands, says something nice and flies back. Old planes wait in the hangar at the top; 📄 folds a new one.
 
 ## On the iPad
 1. Open the site in **Safari**, then tap **Share → Add to Home Screen**.
