@@ -22,8 +22,7 @@ or sees is **Danish**; code, comments and docs are English. README.md lists the 
   theme-color, the iOS 26 bottom-gap workaround, the voice picker, `?spil=<id>` deep links, and service worker updates.
 - `js/core.js`: the shared **kit** passed to every game (below).
 - `css/app.css`: shell styles only. Games inject their own CSS.
-- `games/<id>.js`: one file per game. `games/art/*.js`: SVG art as template strings, plus `flipbog.js` (the shared
-  swipe-strip engine used by Fjæs and Figurer).
+- `games/<id>.js`: one file per game. `games/art/*.js`: SVG art as template strings.
 - `sw.js`: cache-first when deployed; network-first locally (`VERSION` is still the `__VERSION__` placeholder).
 - `tools/make_icons.py` regenerates `icons/`; `tools/drive.mjs` is the headless test driver (see Testing).
 
