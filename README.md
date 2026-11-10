@@ -5,13 +5,10 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 
 ## Games
 - **Bobler** 🫧: bubbles float up and you tap to pop them; each size plays its own note. Tapping empty water blows a new bubble. Animal bubbles say the animal's name and throw confetti.
-- **Former** 🔺: a shape sorter. Drag the smiling shapes into their holes, which snap in generously for small fingers. Each shape says its name, and finishing a round plays a fanfare and starts a new round.
 - **Xylofon** 🎶: rainbow bars with faces. Tap to play, or slide a finger across for a glissando. Multi-touch, and pentatonic, so nothing sounds wrong.
 - **Maling** 🎨: finger painting in shifting rainbow strokes with sparkles. Each finger sings, higher towards the top of the screen. 🧽 wipes the paper.
-- **Bøh!** 🙈: animals hide behind bushes and presents and peek out as a hint. Tap the right spot for "Bøh!", the animal's name and confetti.
 - **Bondegården** 🐮: tap an animal and it jumps, shows a speech bubble and says "Koen siger muuuh!". Tap the sun too. You can use your own recordings: set `RECORDINGS = true` in `games/bondegaard.js` and add `lyd/dyr/<id>.mp3`.
 - **Badetid** 🛁: a whole bath in six steps, shown as a row of icons at the top. A muddy animal or vehicle waits by the tub: drag it in (or just tap it), pour water with the jug, squirt soap, scrub the mud off with the sponge, rinse the foam away with the shower, then rub it dry with the towel. Only one tool is out at a time, glowing and bouncing, and touching anywhere grabs it. Each step moves on by itself once it's done enough. At the end the animal says thank you and the next one arrives.
-- **Farver** 🪣: drag balls into the bucket of the same colour, which is named as each ball drops in. A ball dropped in the wrong bucket bounces back; anywhere else is fine.
 - **Ansigt** 😜: drag parts onto a face from five drawers (eyes, nose and ears, mouths, hats and hair, fun things), 60 in all. Every part is named as it lands; the drop zone reaches past the face's edge, ears flip to face the right way on either side, and you drag a part off to remove it. Tapping the face makes it giggle, and 🔄 gives a new face.
 - **Fjæs** 🤪: a three-part flip book face (hair and eyes / nose and ears / mouth and chin). Swipe each strip sideways, tap a strip to spin it, or 🎲 to spin all three. 14 sets drawn in SVG (`games/art/fjaes-art.js`); a full set gets a fanfare.
 - **Figurer** 🦸: the same for whole characters: head / body / legs from 16 sets such as king, robot, rollerskater, mermaid and dinosaur (`games/art/figur-art.js`). Tap the character to make it dance. Both flip books share `games/art/flipbog.js`.
@@ -33,7 +30,6 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 - **Haven** 🌻: plant seeds, water them and tap the sun so they grow. Bees arrive, and you harvest into the basket.
 - **Akvariet** 🐠: build fish from body, tail, colour, pattern and eyes, then drop them in the tank. Tap the water to feed them; crabs, octopus, turtle and whale join as friends.
 - **Snekugle** ⛄: put figures into a snow globe and swipe to shake it. Themes are snow, glitter, hearts, stars and bubbles, and tapping the base winds a music box.
-- **Lyd-zoo** 🦁: a long street to swipe along, past farm, pond, town, station, beach and zoo, with 41 things that make sounds when tapped.
 - **Bogstaver** 🔤: the iPad version of Bogstavleg. A Danish keyboard on screen; the letter to find glows on it. 🔤 Find bogstavet (a random letter) or 🎵 ABC-sangen (A to Å in song order, ending with "28 skal der stå på min lærers storetå"). Uses our own recordings in `games/bogstav-lyd/` (copied from Bogstavleg's `lyd/`, letters only), with the iPad voice as a fallback.
 - **Papirflyver** ✈️: fold a paper plane in six folds (tap, or drag the flap along), choosing from ten patterned sheets. Then flick it to throw (a hard upward flick loops) or just tap. It glides past stars, balloons and birds; tap the sky for a gust of wind. It lands, says something nice and flies back. Old planes wait in the hangar at the top; 📄 folds a new one.
 
@@ -56,7 +52,7 @@ It's plain HTML/CSS/JS with no build step and no dependencies.
 ```
 python3 -m http.server 8000      # then open http://localhost:8000
 ```
-`?spil=former` (or `?spil=bobler`) opens a game directly.
+`?spil=bobler` (or any game id, e.g. `?spil=flyver`) opens a game directly.
 
 ## Adding a game
 Create `games/<name>.js`:
