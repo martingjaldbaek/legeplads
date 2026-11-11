@@ -758,7 +758,7 @@ export default {
       } else {
         // smoothie: four sips
         const fillR = glassObj.el.querySelector('.fill');
-        items = [0, 1, 2, 3].map(i => ({ sip: true, y: 70 + (i + 1) * 45, fillR, el: null }));
+        items = [0, 1, 2, 3].map(() => ({ sip: true, fillR, el: null }));
       }
       items.forEach(o => { if (o.el) { o.el.classList.add('bg-pop'); o.el.style.pointerEvents = 'none'; } });
       const hint = obj('', 350, 450, 560, 400);
@@ -771,7 +771,8 @@ export default {
         const it = items[--left];
         if (it.sip) {
           it.fillR.style.transition = 'y .4s ease';
-          it.fillR.setAttribute('y', left === 0 ? 260 : it.y);
+          // sips are taken from the end of the list, so count down from the top: 115, 160, 205, then empty
+          it.fillR.setAttribute('y', left === 0 ? 260 : 70 + (items.length - left) * 45);
           glassObj.el.querySelector('.froth').setAttribute('opacity', 0);
           kit.sfx.squeak(); kit.tone(500, { dur: 0.25, vol: 0.1, slide: 900, type: 'triangle' });
         } else {

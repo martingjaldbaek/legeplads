@@ -740,9 +740,10 @@ export default {
     function frame(now) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      updatePlane(dt, now);
+      // the flight (and everything else that moves in the sky) holds still while a new plane is being folded
+      if (!folding) updatePlane(dt, now);
       cx.setTransform(Math.min(2, window.devicePixelRatio || 1), 0, 0, Math.min(2, window.devicePixelRatio || 1), 0, 0);
-      drawWorld(now, dt);
+      drawWorld(now, folding ? 0 : dt);
       if (folding) drawFold(now);
       if (!folding && !plane) newBtn.classList.add('glow');
       raf = requestAnimationFrame(frame);
