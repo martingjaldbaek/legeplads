@@ -12,6 +12,7 @@ import instrumenter from '../games/instrumenter.js';
 import tryllemaling from '../games/tryllemaling.js';
 import dyrpuslespil from '../games/dyrpuslespil.js';
 import koekken from '../games/koekken.js';
+import bageri from '../games/bageri.js';
 import madpakke from '../games/madpakke.js';
 import butik from '../games/butik.js';
 import dukkehus from '../games/dukkehus.js';
@@ -30,7 +31,7 @@ import flyver from '../games/flyver.js';
 // To add a game: create games/<name>.js (see README) and add it here.
 const GAMES = [bobler, xylofon, maling, tryllemaling, bondegaard, badetid,
   ansigt, dyrpuslespil, ballon, instrumenter, musik,
-  koekken, madpakke, butik, dukkehus, klaedpaa, tandboerste, bilvask, taarn, byggeplads, tog, have, akvarie, snekugle, bogstaver, flyver];
+  koekken, bageri, madpakke, butik, dukkehus, klaedpaa, tandboerste, bilvask, taarn, byggeplads, tog, have, akvarie, snekugle, bogstaver, flyver];
 
 const $ = s => document.querySelector(s);
 let current = null, stopGame = null, reloadWhenHome = false;
