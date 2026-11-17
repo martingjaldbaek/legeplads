@@ -105,7 +105,7 @@ export default {
     let finger = null;           // { id, x, y, px, py, x0, y0, moved }
     let toolX = 0, toolY = 0, toolRot = 0;
     const parts = [];            // bubbles, sparkles, drops
-    let raf = 0;
+    let raf = 0, foamDirty = false, busyFor = 0;
 
     /* ---------- drawing helpers ---------- */
     function drawSubject(ctx) {
@@ -117,17 +117,34 @@ export default {
       ctx.fillText(subject[0], box / 2, box * 0.54);
       ctx.restore();
     }
+    // The subject's silhouette, drawn once per subject/size. Drawing a ~800px emoji with fillText is slow on the
+    // iPad, and trimming used to do that on nearly every finger move while scrubbing, which could choke the game.
+    const shape = document.createElement('canvas');
+    const shapeCtx = shape.getContext('2d');
+    function makeShape() {
+      shape.width = shape.height = Math.max(1, Math.round(box * dpr));
+      drawSubject(shapeCtx);
+      clearLayer(body); body.ctx.drawImage(shape, 0, 0);
+    }
     // keep a layer to the subject's shape and above the rim
     function trim(L, clip = true) {
       const c = L.ctx;
-      c.save(); c.globalCompositeOperation = 'destination-in'; drawSubject(c); c.restore();
+      if (!L.cv.width) return;
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'destination-in'; c.drawImage(shape, 0, 0, L.cv.width, L.cv.height); c.restore();
       if (clip) c.clearRect(0, box * RIM * dpr, L.cv.width, L.cv.height);
     }
+    // how much is left on a layer, measured on a small copy (reading back the full canvas is slow on the iPad)
+    const smp = document.createElement('canvas');
+    smp.width = smp.height = 64;
+    const smpCtx = smp.getContext('2d', { willReadFrequently: true });
     function count(L) {
+      if (!L.cv.width) return 0;
+      smpCtx.clearRect(0, 0, 64, 64);
+      smpCtx.drawImage(L.cv, 0, 0, 64, 64);
       // only above the rim: that's all that can be reached once it's in the tub
-      const d = L.ctx.getImageData(0, 0, L.cv.width, Math.max(1, Math.round(box * RIM * dpr))).data;
+      const d = smpCtx.getImageData(0, 0, 64, Math.round(64 * RIM)).data;
       let n = 0;
-      for (let i = 3; i < d.length; i += 64) if (d[i] > 60) n++;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > 140) n++;   // averaged pixels: count the ones still mostly covered
       return n;
     }
     const frac = L => count(L) / L.start;
@@ -154,12 +171,13 @@ export default {
         c.strokeStyle = 'rgba(160,205,240,.9)'; c.lineWidth = 1.5; c.stroke();
       }
       c.restore();
-      trim(foam);
+      foamDirty = true;   // trimmed to the subject's shape once per frame, not once per blob
     }
 
     /* ---------- layout ---------- */
     const floatY = () => -level * box * 0.07;
     function layout() {
+      if (!root.clientWidth || !root.clientHeight) return;   // hidden for a moment: keep the last layout
       W = root.clientWidth; H = root.clientHeight;
       dpr = Math.min(2, window.devicePixelRatio || 1);
       box = Math.min(W * 0.55, H * 0.6);
@@ -190,8 +208,9 @@ export default {
         if (old.width) old.getContext('2d').drawImage(L.cv, 0, 0);
         L.cv.width = L.cv.height = Math.round(box * dpr);
         if (old.width && L !== body) L.ctx.drawImage(old, 0, 0, L.cv.width, L.cv.height);
+        old.width = old.height = 0;   // give the memory back now (iOS caps the total canvas memory)
       }
-      drawSubject(body.ctx);
+      makeShape();
       if (!(finger && step === 'arrive')) placeSubject();
       if (!finger) restTool();
     }
@@ -237,7 +256,7 @@ export default {
       subj.classList.remove('intub', 'happy');
       subj.style.transition = 'none';
       moveSubject(-box, waitY, 0.45);
-      clearLayer(body); drawSubject(body.ctx);
+      makeShape();
       clearLayer(mud); clearLayer(foam); clearLayer(wet);
       void subj.offsetWidth;
       subj.style.transition = 'transform .9s cubic-bezier(.4,1.2,.5,1)';
@@ -269,7 +288,7 @@ export default {
       kit.say(STEPS[i][2], { pitch: 1.3 });
       if (s === 'arrive') { subj.classList.add('wait'); hideTool(); return; }
       if (s === 'dry') paintWet();
-      if (s === 'rinse') foam.start = Math.max(1, count(foam));
+      if (s === 'rinse') { trim(foam); foamDirty = false; foam.start = Math.max(1, count(foam)); }
       if (s === 'soap') squirts = 0;
       showTool(STEPS[i][1] || TOWEL);
     }
@@ -477,11 +496,33 @@ export default {
       }
     }
 
+    // Safety net: the longest legitimate pause between steps is the end-of-bath celebration (~8 s). If the game
+    // has sat 'busy' much longer than that, something broke (a lost timer, an iPad hiccup): start a fresh bath.
+    // Counted in capped frame time, so a stretch in the background doesn't trip it.
+    function recover() {
+      t.clear();
+      finger = null;
+      hideTool();
+      suds.classList.remove('on');
+      subj.classList.remove('wait', 'intub', 'happy');
+      subjAt = 'off';
+      nextSubject();
+    }
+
     let prev = performance.now();
     function frame(now) {
+      // schedule the next frame first, so one bad frame can never stop the loop (and with it the
+      // water, soap and shower steps, which only advance here)
+      raf = requestAnimationFrame(frame);
+      try { tick(now); } catch (e) { console.error(e); }
+    }
+    function tick(now) {
       const dt = Math.min(0.05, (now - prev) / 1000);
       prev = now;
+      busyFor = step === 'busy' ? busyFor + dt : 0;
+      if (busyFor > 14) { busyFor = 0; recover(); return; }
       holdActions(dt, now);
+      if (foamDirty) { foamDirty = false; trim(foam); }
       fc.clearRect(0, 0, W, H);
       for (let i = parts.length - 1; i >= 0; i--) {
         const b = parts[i];
@@ -509,7 +550,6 @@ export default {
         fc.fillStyle = `rgba(255,255,255,${b.life})`;
         fc.beginPath(); fc.arc(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.25, 0, 6.283); fc.fill();
       }
-      raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
 
@@ -517,6 +557,10 @@ export default {
     nextSubject();
     const offResize = kit.onResize(root, layout);
 
-    return () => { t.clear(); cancelAnimationFrame(raf); offResize(); };
+    return () => {
+      t.clear(); cancelAnimationFrame(raf); offResize();
+      // free the canvas memory right away rather than whenever the garbage collector gets to it
+      for (const c of [fx, shape, smp, body.cv, mud.cv, foam.cv, wet.cv]) c.width = c.height = 0;
+    };
   },
 };
