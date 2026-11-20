@@ -4,10 +4,14 @@
  *   🔤 Find bogstavet – a random letter (A–Å, no W) pops up and is named; tap its key for confetti and praise.
  *   🎵 ABC-sangen – the letters come in song order, a line of seven at a time; each right key sings that letter.
  *      After Å the whole alphabet shows and "28 skal der stå på min lærers storetå" plays.
+ *   ✏️ Stav et ord – a name or a thing (with its picture) is said, then typed letter by letter; each right key
+ *      names that letter, and the finished word is said again with confetti. Words from games/bogstav-ord.js
+ *      (shared with the PC game); Adam, Mor and Far come up more often.
  * Wrong keys just boop and float away as a ghost letter. Our own recordings live in games/bogstav-lyd/
- * (navn = neutral name, ros = excited name + ekstra1–6 praise words, sang = sung letter + finale);
- * Æ Ø Å are named AE OE AA. A missing clip falls back to the iPad's Danish voice.
+ * (navn = neutral name, ros = excited name + ekstra1–6 praise words, sang = sung letter + finale, ord = words);
+ * Æ Ø Å are named AE OE AA (in words: ae oe aa, lowercase). A missing clip falls back to the iPad's Danish voice.
  */
+import { ORD_NAVNE, ORD_TING, ORD_VAEGT } from './bogstav-ord.js';
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVXYZÆØÅ'.split('');   // the 28 of the Danish ABC song: no W
 const SONG = [
   [['A', 'C', 1], ['B', 'C', 1], ['C', 'G', 1], ['D', 'G', 1], ['E', 'A', 1], ['F', 'A', 1], ['G', 'G', 2]],
@@ -22,6 +26,11 @@ const COLORS = ['#ff3b6b', '#ff8a00', '#2ec4b6', '#3a86ff', '#8338ec', '#06d6a0'
 const HINT_MS = 8000, MAX_IDLE_HINTS = 3;
 const CLIPS = new URL('./bogstav-lyd/', import.meta.url);
 const clipName = ch => ({ 'Æ': 'AE', 'Ø': 'OE', 'Å': 'AA' })[ch] || ch;
+const wordFile = w => w.toLowerCase().replace(/æ/g, 'ae').replace(/ø/g, 'oe').replace(/å/g, 'aa');
+const WORD_HINT_MS = 5000, WORD_RECENT = 6;
+const WORDS = ORD_NAVNE.concat(ORD_TING)
+  .map(([word, pic]) => ({ word, pic: pic || '', letters: word.toUpperCase().split(''), weight: ORD_VAEGT[word] || 1 }))
+  .filter(w => w.letters.length && w.letters.every(ch => LETTERS.includes(ch)));
 
 const BUDDY = `<svg viewBox="0 0 240 270">
   <circle cx="48" cy="98" r="24" fill="#a0522d"/><circle cx="192" cy="98" r="24" fill="#a0522d"/>
@@ -64,6 +73,8 @@ const CSS = `
   box-shadow: 0 0 0 .05em var(--c), 0 .1em .3em rgba(0,0,0,.12); animation: bs-pulse 1.1s ease-in-out infinite; }
 .bs-ltr.pop { animation: bs-pop .55s ease; }
 .bs-wiggle { animation: bs-wiggle .45s ease !important; }
+.bs-row.won .bs-ltr { animation: bs-cheer .6s ease both; }   /* a wave along the finished word (delays set in JS) */
+@keyframes bs-cheer { 0% { transform:none } 40% { transform: translateY(-.25em) scale(1.35) rotate(-8deg) } 100% { transform:none } }
 
 .bs-buddy { position:absolute; pointer-events:none; }
 .bs-buddy svg { width:100%; height:100%; display:block; overflow:visible; }
@@ -126,7 +137,7 @@ export default {
     root.insertAdjacentHTML('beforeend', `<div class="bs">
       <div class="bs-top"><div class="bs-single"></div><div class="bs-row"></div><div class="bs-buddy">${BUDDY}</div></div>
       <div class="bs-kb"></div>
-      <div class="bs-modes"><button data-mode="random">🔤</button><button data-mode="song">🎵</button></div></div>`);
+      <div class="bs-modes"><button data-mode="random">🔤</button><button data-mode="song">🎵</button><button data-mode="word">✏️</button></div></div>`);
     const bs = root.querySelector('.bs'), top = bs.querySelector('.bs-top'), single = bs.querySelector('.bs-single');
     const row = bs.querySelector('.bs-row'), kb = bs.querySelector('.bs-kb'), buddyEl = bs.querySelector('.bs-buddy');
     const bsvg = buddyEl.querySelector('svg'), modeBtns = [...bs.querySelectorAll('.bs-modes button')];
@@ -148,6 +159,7 @@ export default {
       for (let i = 1; i <= 6; i++) load('ros/ekstra' + i);
       load('sang/finale');
     }
+    const preloadWords = () => WORDS.forEach(w => load('ord/' + wordFile(w.word)));
     function stopClip() { if (curSrc) { try { curSrc.stop(); } catch (e) {} curSrc = null; } }
     // resolves when the clip ends; resolves false at once when it's missing (caller falls back to the voice)
     async function clip(key) {
@@ -175,6 +187,11 @@ export default {
       if (await clip('ros/ekstra' + (1 + Math.floor(Math.random() * 6)))) return;
       kit.say(kit.pick(PRAISE), { pitch: 1.5, rate: 1.05 });
       await wait(1200);
+    }
+    async function sayWord(w, mood) {
+      if (await clip('ord/' + wordFile(w.word))) return;
+      if (mood === 'praise') kit.say(w.word + '!', { pitch: 1.45, rate: 1 }); else kit.say(w.word, { pitch: 1.15, rate: 0.85 });
+      await wait(1100);
     }
     function singLetter(ch, note, beats) {
       clip('sang/' + clipName(ch)).then(ok => {
@@ -243,11 +260,12 @@ export default {
     keyEl.W.classList.add('w');   // on the keyboard, but not in the song alphabet
 
     /* ---------- state ---------- */
-    const st = { mode: 'random', busy: true, target: null, line: 0, pos: 0, lastPrompt: 0, idleHints: 0, wrongSince: 0, lastBoop: 0, session: 0 };
+    const st = { mode: 'random', busy: true, target: null, line: 0, pos: 0, word: null, lastPrompt: 0, idleHints: 0, wrongSince: 0, lastBoop: 0, session: 0 };
     const colorOf = ch => COLORS[(LETTERS.indexOf(ch) * 3) % COLORS.length];
 
     function currentTarget() {
       if (st.mode === 'random') return st.target;
+      if (st.mode === 'word') return st.word ? st.word.letters[st.pos] || null : null;
       const l = SONG[st.line];
       return l && l[st.pos] ? l[st.pos][0] : null;
     }
@@ -393,6 +411,93 @@ export default {
       t.later(() => { if (session !== st.session) return; st.line = 0; st.pos = 0; renderLine(); layout(); st.busy = false; markKey(); promptTarget(); }, 3500);
     }
 
+    /* ---------- mode 3: spell a word ---------- */
+    const recentWords = [];
+    function pickWord() {
+      const pool = WORDS.filter(w => !recentWords.includes(w.word));
+      const list = pool.length ? pool : WORDS;
+      let r = Math.random() * list.reduce((s, w) => s + w.weight, 0);
+      const w = list.find(x => (r -= x.weight) < 0) || list[list.length - 1];
+      recentWords.push(w.word);
+      if (recentWords.length > Math.min(WORD_RECENT, WORDS.length - 1)) recentWords.shift();
+      return w;
+    }
+    async function nextWord() {
+      st.busy = true;
+      markKey();
+      const session = st.session;
+      const w = st.word = pickWord();
+      st.pos = 0;
+      row.className = 'bs-row word';
+      row.innerHTML = '';
+      const line = document.createElement('div');
+      line.className = 'bs-line';
+      const c0 = Math.floor(Math.random() * COLORS.length);
+      w.letters.forEach((ch, i) => {
+        const s = document.createElement('span');
+        s.className = 'bs-ltr future';
+        s.textContent = ch;
+        s.style.setProperty('--c', COLORS[(c0 + i * 3) % COLORS.length]);
+        line.appendChild(s);
+      });
+      row.appendChild(line);
+      single.innerHTML = '';
+      if (w.pic) {
+        const p = document.createElement('span');
+        p.className = 'bs-big in';
+        p.textContent = w.pic;
+        p.addEventListener('animationend', e => { if (e.animationName === 'bs-popin') p.classList.remove('in'); });
+        single.appendChild(p);
+      }
+      layoutTop();
+      await wait(650);
+      if (session !== st.session || !alive) return;
+      await sayWord(w);                      // "Kat" – then the first letter lights up and is named
+      if (session !== st.session || !alive) return;
+      markRow();
+      st.busy = false;
+      markKey();
+      t.later(promptTarget, 250);
+    }
+    function hitWord() {
+      st.busy = true;
+      markKey();
+      const ch = currentTarget();
+      const el = row.querySelector('.bs-ltr.target');
+      el.classList.remove('target', 'bs-wiggle');
+      el.classList.add('done');
+      kit.replay(el, 'pop');
+      const [x, y] = centerOf(el);
+      kit.burst(x, y, 40, 0.85);
+      kit.tone([523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77, 1046.5, 1174.66][st.pos % 9], { dur: 0.3, type: 'triangle', vol: 0.12 });
+      sayLetter(ch, 'prompt');
+      point(el, 1300);
+      st.pos++;
+      if (st.pos >= st.word.letters.length) t.later(wordDone, 900);
+      else t.later(() => { markRow(); st.busy = false; markKey(); }, 300);
+    }
+    async function wordDone() {
+      const session = st.session, w = st.word;
+      row.querySelectorAll('.bs-ltr').forEach((s, i) => {
+        s.classList.remove('pop');
+        s.style.animationDelay = i * 90 + 'ms';
+        t.later(() => { const [a, b] = centerOf(s); kit.burst(a, b, 25, 0.9); }, i * 90);
+      });
+      row.classList.add('won');
+      const pic = single.querySelector('.bs-big');
+      if (pic) { pic.className = 'bs-big hit'; const [a, b] = centerOf(pic); kit.burst(a, b, 120, 1.2); }
+      chime();
+      jump(); t.later(jump, 500);
+      shiftBackground();
+      await wait(300);
+      await sayWord(w, 'praise');            // the whole word, in your voice
+      if (session !== st.session || !alive) return;
+      await sayPraise();
+      if (session !== st.session || !alive) return;
+      if (pic) t.later(() => { pic.className = 'bs-big out'; }, 150);
+      t.later(nextWord, 550);
+    }
+
     /* ---------- input: every touch on a key counts, several fingers at once are fine ---------- */
     function ghost(ch) {
       const g = document.createElement('div');
@@ -424,7 +529,7 @@ export default {
         st.lastPrompt = performance.now();
         st.wrongSince = 0;
         k.classList.remove('target');
-        if (st.mode === 'random') hitRandom(); else hitSong();
+        ({ random: hitRandom, song: hitSong, word: hitWord })[st.mode]();
       } else wrong(ch);
     });
     // tapping the big letter (or the buddy) names it again
@@ -439,14 +544,15 @@ export default {
       t.clear();
       stopClip();
       if (window.speechSynthesis) speechSynthesis.cancel();
-      Object.assign(st, { mode, busy: true, target: null, line: 0, pos: 0, idleHints: 0, wrongSince: 0 });
+      Object.assign(st, { mode, busy: true, target: null, line: 0, pos: 0, word: null, idleHints: 0, wrongSince: 0 });
       modeBtns.forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
-      single.innerHTML = ''; row.innerHTML = '';
+      single.innerHTML = ''; row.innerHTML = ''; row.className = 'bs-row';
       bs.dataset.mode = mode;
       bsvg.classList.remove('singing');
       layout();
       startIdle();
       if (mode === 'random') nextRandom();
+      else if (mode === 'word') { preloadWords(); nextWord(); }
       else { renderLine(); st.busy = false; markKey(); t.later(promptTarget, 700); }
     }
     modeBtns.forEach(b => b.addEventListener('pointerdown', e => {
@@ -459,19 +565,35 @@ export default {
     function startIdle() {
       t.every(() => {
         if (st.busy || st.idleHints >= MAX_IDLE_HINTS) return;
-        if (performance.now() - st.lastPrompt > HINT_MS) { st.idleHints++; promptTarget(); }
+        if (performance.now() - st.lastPrompt > (st.mode === 'word' ? WORD_HINT_MS : HINT_MS)) { st.idleHints++; promptTarget(); }
       }, 500);
     }
 
     /* ---------- layout ---------- */
     function layoutTop() {
       const portrait = H > W;
+      if (st.mode === 'word') return layoutWord(portrait);
+      single.style.paddingTop = '';
       const big = single.querySelector('.bs-big');
       if (big) big.style.fontSize = Math.min(topH * 0.78, W * (portrait ? 0.6 : 0.5)) + 'px';
       const all = row.classList.contains('all');
       row.style.top = (all ? Math.max(84, topH * 0.04) : Math.max(90, topH * (portrait ? 0.14 : 0.08))) + 'px';
       const fs = all ? Math.min(topH * 0.12, W * (portrait ? 0.075 : 0.06)) : Math.min(topH * 0.2, W * (portrait ? 0.105 : 0.085));
       row.querySelectorAll('.bs-ltr').forEach(s => { s.style.fontSize = fs + 'px'; });
+    }
+    // the word across the top (sized so even ELISABETH fits), its picture below; a name without a picture
+    // gets its letters bigger, in the middle
+    function layoutWord(portrait) {
+      const n = st.word ? st.word.letters.length : 4, pic = !!single.querySelector('.bs-big');
+      const gapW = W * 0.014, fit = (W * 0.9 - (n - 1) * gapW) / (n * 0.95);
+      const fs = Math.min(topH * (pic ? 0.19 : 0.3), fit, W * (portrait ? 0.14 : 0.11));
+      row.querySelectorAll('.bs-ltr').forEach(s => { s.style.fontSize = fs + 'px'; });
+      const rowTop = pic ? Math.max(84, topH * (portrait ? 0.1 : 0.06)) : Math.max(84, (topH - fs * 1.1) / 2 - topH * 0.05);
+      row.style.top = rowTop + 'px';
+      const below = rowTop + fs * 1.25;
+      single.style.paddingTop = below + 'px';
+      const big = single.querySelector('.bs-big');
+      if (big) big.style.fontSize = Math.min((topH - below) * 0.75, W * (portrait ? 0.5 : 0.36)) + 'px';
     }
     function layout() {
       W = root.clientWidth; H = root.clientHeight;
