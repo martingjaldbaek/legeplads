@@ -48,7 +48,7 @@ export default {
   start(root, kit) {
     root.style.background = 'radial-gradient(circle at 50% 30%, #fff3e3, #ffd7b0)';
     kit.injectCSS(root, CSS + ART_CSS);
-    const ac = kit.audio(), out = kit.output();
+    const ac = kit.audio();   // only for building the harp buffers; playback asks kit each time (see pluck)
     const wrap = document.createElement('div');
     wrap.className = 'ins-wrap';
     root.appendChild(wrap);
@@ -179,10 +179,10 @@ export default {
       const now = performance.now();
       if (now - lastPluck[i] < 60) return;
       lastPluck[i] = now;
-      const src = ac.createBufferSource(), g = ac.createGain();
+      const a = kit.audio(), src = a.createBufferSource(), g = a.createGain();
       src.buffer = buffers[i];
       g.gain.value = 0.5;
-      src.connect(g).connect(out);
+      src.connect(g).connect(kit.output());
       src.start();
       kit.replay(strings[i], 'twang');
     }

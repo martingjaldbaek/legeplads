@@ -74,12 +74,19 @@ export default {
 
   start(root, kit) {
     kit.injectCSS(root, CSS);
-    const ac = kit.audio();
     let song = null, grid = null, tiles = [], cols = [], step = 0, nextTime = 0, loop = 0, timer = 0, raf = 0;
     const queue = [];                    // { step, time } scheduled but not yet shown
+    // the audio clock. kit replaces the context after the iPad has been locked, and a new one starts again from 0,
+    // so when it changes, the loop carries on from the new clock instead of waiting for the old time to come round
+    let ac = kit.audio();
+    function clock() {
+      const a = kit.audio();
+      if (a !== ac) { ac = a; nextTime = a.currentTime + 0.1; queue.length = 0; }
+      return a.currentTime;
+    }
 
     /* ---------- sounds (scheduled at an absolute audio time) ---------- */
-    const at = time => Math.max(0, time - ac.currentTime);
+    const at = time => Math.max(0, time - clock());
     function lead(m, time) {
       const f = midi(m), a = at(time);
       if (song.lead === 'pluck') { kit.tone(f, { at: a, dur: 0.45, type: 'triangle', vol: 0.22, attack: 0.003 }); kit.tone(f * 2, { at: a, dur: 0.15, vol: 0.05 }); }
@@ -105,7 +112,7 @@ export default {
     /* ---------- scheduler: look ahead 120 ms, tick every 25 ms ---------- */
     function schedule() {
       const stepDur = 60 / song.bpm / 2;          // eighth notes
-      while (nextTime < ac.currentTime + 0.12) {
+      while (nextTime < clock() + 0.12) {
         backing(step, nextTime, stepDur);
         tiles.forEach((row, r) => {
           if (!row[step].on) return;
@@ -119,7 +126,7 @@ export default {
       }
     }
     function draw() {
-      while (queue.length && queue[0].time <= ac.currentTime) {
+      while (queue.length && queue[0].time <= clock()) {
         const { step: s } = queue.shift();
         cols.forEach((col, c) => col.forEach(t => t.el.classList.toggle('now', c === s)));
       }
@@ -189,7 +196,7 @@ export default {
         const r = +el.dataset.r, c = +el.dataset.c;
         if (tiles[r][c].on === paint) return;
         set(r, c, paint);
-        if (paint) { r < 5 ? lead(song.root + 12 + song.scale[4 - r], ac.currentTime) : drum[DRUMS[r - 5][0]](ac.currentTime); }
+        if (paint) { r < 5 ? lead(song.root + 12 + song.scale[4 - r], clock()) : drum[DRUMS[r - 5][0]](clock()); }
         else kit.sfx.blip(2);
       };
       grid.addEventListener('pointerdown', e => {
@@ -212,7 +219,7 @@ export default {
       root.append(back, clear);
 
       layout();
-      step = 0; loop = 0; nextTime = ac.currentTime + 0.1;
+      step = 0; loop = 0; nextTime = clock() + 0.1;
       timer = setInterval(schedule, 25);
       schedule();
       raf = requestAnimationFrame(draw);

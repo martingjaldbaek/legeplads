@@ -145,12 +145,12 @@ export default {
 
     /* ---------- recordings (Web Audio, so they play with the mute switch on and never need a second gesture) ---------- */
     const bufs = new Map();   // "kind/id" -> Promise<AudioBuffer|null>
-    let ctx = null, curSrc = null;
+    // (the context is fetched fresh each time: kit replaces it after the iPad has been locked)
+    let curSrc = null;
     function load(key) {
       if (!bufs.has(key)) {
-        ctx = ctx || kit.output().context;
         bufs.set(key, fetch(new URL(key + '.mp3', CLIPS)).then(r => (r.ok ? r.arrayBuffer() : null))
-          .then(b => (b ? new Promise((ok, no) => ctx.decodeAudioData(b, ok, no)) : null)).catch(() => null));
+          .then(b => (b ? new Promise((ok, no) => kit.audio().decodeAudioData(b, ok, no)) : null)).catch(() => null));
       }
       return bufs.get(key);
     }
@@ -167,7 +167,7 @@ export default {
       if (!buf || !alive) return false;
       stopClip();
       if (window.speechSynthesis) speechSynthesis.cancel();
-      const s = ctx.createBufferSource();
+      const s = kit.audio().createBufferSource();
       s.buffer = buf;
       s.connect(kit.output());
       curSrc = s;

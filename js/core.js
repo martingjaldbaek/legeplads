@@ -13,10 +13,10 @@ export const shuffle = arr => {
 export const COLORS = ['#ff3b6b', '#ff8a00', '#ffc400', '#2ec4b6', '#3a86ff', '#8338ec', '#06d6a0', '#f15bb5', '#00a6fb', '#e85d04'];
 
 /* ---------- audio (Web Audio, everything synthesized: no files to load) ---------- */
-let ac = null, master = null, unlocked = false;
+let ac = null, master = null, unlocked = false, wasHidden = false;
 
 export function audio() {
-  if (!ac) {
+  if (!ac || ac.state === 'closed') {
     const AC = window.AudioContext || window.webkitAudioContext;
     ac = new AC();
     master = ac.createGain();
@@ -28,10 +28,25 @@ export function audio() {
   return ac;
 }
 
+/* After the iPad locks (or the app goes to the background), iOS can hand the AudioContext back "interrupted",
+   or "running" but silent, and resume() never brings the sound back: every game stays mute. So the first touch
+   after being hidden throws the old context away and builds a fresh one inside that gesture.
+   Games must therefore never keep the context or kit.output() across taps: ask kit.audio() / kit.output()
+   each time (AudioBuffers are fine to keep, they work in any context). */
+document.addEventListener('visibilitychange', () => { if (document.hidden) wasHidden = true; });
+addEventListener('pagehide', () => { wasHidden = true; });
+function freshContext() {
+  const old = ac;
+  ac = null; master = null; noiseBuf = null; unlocked = false;
+  try { old.close().catch(() => {}); } catch (e) {}
+}
+
 /** Call from inside a tap handler. iOS only allows sound after a user gesture. */
 export function unlock() {
   // Play as media, so the sound isn't muted by the silent switch (Safari 16.4+).
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  if (ac && (wasHidden || ac.state === 'interrupted')) freshContext();
+  wasHidden = false;
   const a = audio();
   if (unlocked) return;
   unlocked = true;
